@@ -15,7 +15,7 @@ app.get("/api/router/ready", (req, res) => {
 })
 
 let proxies = {}
-
+let agentproxies = {}
 function addProxy(sandboxId) {
     if (!proxies[sandboxId]) {
         proxies[sandboxId] = createProxyMiddleware({
@@ -27,6 +27,16 @@ function addProxy(sandboxId) {
     return proxies[sandboxId];
 }
 
+function addAgentProxy(sandboxId) {
+    if (!agentproxies[sandboxId]) {
+        agentproxies[sandboxId] = createProxyMiddleware({
+            target: `http://sandbox-service-${sandboxId}:3000`,
+            changeOrigin: true,
+            ws: true,
+        });
+    }
+    return agentproxies[sandboxId];
+}
 app.use((req, res, next) => {
     const host = req.headers.host;
 
@@ -35,6 +45,12 @@ app.use((req, res, next) => {
     if (!sandboxId) {
         return res.status(404).send("Sandbox not found");
     }
-    return addProxy(sandboxId)(req, res, next)
+    if (host.split('.')[1] == "agent") {
+        return addAgentProxy(sandboxId)(req, res, next)
+    }
+    else if (host.split('.')[1] == "preview") {
+        return addProxy(sandboxId)(req, res, next)
+    }
+
 });
 export default app
