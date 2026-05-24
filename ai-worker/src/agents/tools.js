@@ -4,7 +4,7 @@ import * as z from "zod"
 export const listFilesTool = tool(
     async ({ }, config) => {
         console.log("list Files called")
-        const response = await axios.get(`http://${config.context.projectId}.agent.localhost/api/agent/listFiles`)
+        const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/listFiles`)
         return JSON.stringify(response.data.data)
     }, {
     name: "list_files",
@@ -16,7 +16,7 @@ export const listFilesTool = tool(
 export const readFilesTool = tool(
     async ({ files = [] }, config) => {
         console.log("read Files called")
-        const response = await axios.get(`http://${config.context.projectId}.agent.localhost/api/agent/readFile?files=${files.join(",")}`)
+        const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/readFile?files=${files.join(",")}`)
         return JSON.stringify(response.data.data)
     }, {
     name: "read_files",
@@ -30,7 +30,7 @@ export const readFilesTool = tool(
 export const updateFilesTool = tool(
     async ({ files }, config) => {
         console.log("update Files called")
-        const response = await axios.patch(`http://${config.context.projectId}.agent.localhost/api/agent/updateFile`, {
+        const response = await axios.patch(`http://sandbox-service-${config.context.projectId}:3000/api/agent/updateFile`, {
             updates: files
         })
         return JSON.stringify(response.data.data)

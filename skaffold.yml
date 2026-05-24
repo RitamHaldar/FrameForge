@@ -21,6 +21,13 @@ build:
       context: Sandbox/template
       docker:
         dockerfile: dockerfile
+    - image: ai-worker
+      context: ai-worker
+      docker:
+        dockerfile: dockerfile
+      sync:
+        infer:
+          - "src/**"
 
 manifests:
   rawYaml:
@@ -30,3 +37,5 @@ manifests:
     - k8s/router-deployment.yml
     - k8s/router-service.yml
     - k8s/rbac.yml
+    - k8s/ai-worker-deployment.yml
+    - k8s/ai-worker-service.yml

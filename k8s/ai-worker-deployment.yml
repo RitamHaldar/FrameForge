@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker
+  labels:
+    app: ai-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-worker
+  template:
+    metadata:
+      labels:
+        app: ai-worker
+    spec:
+      containers:
+        - image: ai-worker
+          imagePullPolicy: IfNotPresent
+          name: ai-worker
+          resources:
+            limits:
+              cpu: "500"
+              memory: "512Mi"
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+          env:
+            - name: NVIDIA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: my-secret
+                  key: NVDIA_KEY
+            - name: MISTRAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret
+                  key: MYSTRAL_KEY
+          livenessProbe:
+            httpGet:
+              path: /api/ai/healthz
+              port: 3000
+            initialDelaySeconds: 90
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/ai/healthz
+              port: 3000
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 3000
+              name: ai-main-port

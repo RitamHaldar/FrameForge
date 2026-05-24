@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: ai-worker-service
+spec:
+  selector:
+    app: ai-worker
+  type: ClusterIP
+  ports:
+    - name: ai-main-port
+      port: 80
+      targetPort: 3000
