@@ -1,7 +1,7 @@
 import express from "express"
 import morgan from "morgan"
 import fs from "node:fs/promises"
-import path from "node:path";
+import path from "node:path"
 
 const app = express();
 
@@ -33,30 +33,29 @@ app.get("/api/agent/ready", (req, res) => {
  */
 
 app.get("/api/agent/listFiles", async (req, res) => {
-
-
-    const listFiles = (dir, basedir) => {
-        const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const listFiles = async (dir, basedir) => {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
 
         const fileList = [];
         for (const entry of entries) {
-            const fullpath = path.join(dir, entry.name)
-            const relativepath = path.relative(basedir, fullpath)
+            const fullpath = path.join(dir, entry.name);
+            const relativepath = path.relative(basedir, fullpath);
 
             const excludedir = ["node_modules", ".git", ".vscode", "dist", ""];
 
             if (excludedir.includes(entry.name)) continue;
 
             if (entry.isDirectory()) {
-                fileList.push(...listFiles(fullpath, basedir))
+                const subFiles = await listFiles(fullpath, basedir);
+                fileList.push(...subFiles);
             } else {
-                fileList.push(relativepath)
+                fileList.push(relativepath);
             }
         }
         return fileList;
     }
     try {
-        const files = listFiles(WORKSPACE_DIR, WORKSPACE_DIR);
+        const files = await listFiles(WORKSPACE_DIR, WORKSPACE_DIR);
         res.status(200).json({
             message: "Files listed successfully",
             status: "success",
@@ -84,13 +83,13 @@ app.get("/api/agent/listFiles", async (req, res) => {
 app.get("/api/agent/readFile", async (req, res) => {
     const files = req.query.files;
     if (!files) {
-        res.status(400).json({
+        return res.status(400).json({
             message: "Files is required",
             status: "error",
             data: null
-        })
+        });
     }
-    const fileslist = files.split(",")
+    const fileslist = files.split(",");
     const result = await Promise.all(
         fileslist.map(async (file) => {
             try {
@@ -98,20 +97,19 @@ app.get("/api/agent/readFile", async (req, res) => {
                 const content = await fs.readFile(fullpath, "utf8");
                 return {
                     [file.replace(WORKSPACE_DIR, "")]: content
-                }
+                };
             } catch (error) {
                 return {
-                    [file.replace(WORKSPACE_DIR, "")]: `Error updating file: ${error.message}`
-                }
+                    [file.replace(WORKSPACE_DIR, "")]: `Error reading file: ${error.message}`
+                };
             }
         })
-    )
+    );
     res.status(200).json({
         message: "Files read successfully",
         status: "success",
         data: result
     });
-
 })
 
 
@@ -133,7 +131,7 @@ app.get("/api/agent/readFile", async (req, res) => {
 app.patch("/api/agent/updateFile", async (req, res) => {
     const updates = req.body.updates;
     if (!updates || !Array.isArray(updates)) {
-        res.status(400).json({
+        return res.status(400).json({
             message: "Updates is required and must be an array",
             status: "error",
             data: null
@@ -141,21 +139,21 @@ app.patch("/api/agent/updateFile", async (req, res) => {
     }
     const result = await Promise.all(
         updates.map(async (update) => {
-            const { path, content } = update;
+            const { file, content } = update;
             try {
-                const fullpath = path.join(WORKSPACE_DIR, path);
-                await fs.mkdir(path.dirname(fullpath), { recursive: true });
-                await fs.writeFile(fullpath, content, "utf8");
+                const filePath = path.join(WORKSPACE_DIR, file);
+                await fs.mkdir(path.dirname(filePath), { recursive: true });
+                await fs.writeFile(filePath, content, "utf8");
                 return {
-                    [fullpath]: "File updated successfully"
-                }
+                    [filePath]: "File updated successfully"
+                };
             } catch (error) {
                 return {
-                    [path]: `Error updating file: ${error.message}`
-                }
+                    [filePath]: `Error updating file: ${error.message}`
+                };
             }
         })
-    )
+    );
     res.status(200).json({
         message: "Files updated successfully",
         status: "success",
@@ -180,6 +178,13 @@ app.patch("/api/agent/updateFile", async (req, res) => {
 
 app.post("/api/agent/createFile", async (req, res) => {
     const files = req.body.files;
+    if (!files || !Array.isArray(files)) {
+        return res.status(400).json({
+            message: "Files is required and must be an array",
+            status: "error",
+            data: null
+        });
+    }
     const result = await Promise.all(
         files.map(async (file) => {
             const { path, content } = file;
@@ -196,7 +201,7 @@ app.post("/api/agent/createFile", async (req, res) => {
                 }
             }
         })
-    )
+    );
     res.status(200).json({
         message: "File created successfully",
         status: "success",

@@ -10,6 +10,7 @@ router.post("/invoke", async (req, res) => {
                 role: "user",
                 content: message
             }],
+        }, {
             context: {
                 projectId: projectId
             }
