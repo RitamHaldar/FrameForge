@@ -4,24 +4,37 @@ const router = express.Router();
 
 router.post("/invoke", async (req, res) => {
     const { message, projectId } = req.body
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+    });
     try {
-        const response = await agent.invoke({
+        const response = await agent.stream({
             messages: [{
                 role: "user",
                 content: message
             }],
         }, {
             context: {
-                projectId: projectId
-            }
+                projectId: projectId,
+            },
+            streamMode: "custom"
         })
-        res.status(200).json({ message: response, success: true })
+        for await (const chunk of response) {
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`)
+        }
+        res.end();
     } catch (error) {
-        console.log(error)
-        res.status(500).json({
-            message: error.message,
-            success: false
-        })
+        if (!res.headersSent) {
+            res.status(500).json({
+                message: error.message,
+                success: false
+            })
+        } else {
+            res.write(`\nError: ${error.message}\n`);
+            res.end();
+        }
     }
 })
 

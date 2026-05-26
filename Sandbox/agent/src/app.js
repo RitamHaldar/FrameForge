@@ -2,15 +2,23 @@ import express from "express"
 import morgan from "morgan"
 import fs from "node:fs/promises"
 import path from "node:path"
-
+import { Server } from "socket.io"
+import http from "http";
+import pty from "node-pty"
 const app = express();
+const httpserver = http.createServer(app);
 
 const WORKSPACE_DIR = "/workspace";
 
 app.use(morgan("combined"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
+const io = new Server(server,{
+    cors:{
+        origin:"*",
+        methods:["GET","POST","PUT","PATCH","DELETE"]
+    }
+})
 app.get("/api/agent/health", (req, res) => {
     res.status(200).json({ status: "Agent server is healthy", service: "agent" });
 })
@@ -19,6 +27,32 @@ app.get("/api/agent/ready", (req, res) => {
     res.status(200).json({ status: "Agent server is ready", service: "agent" });
 })
 
+const shell = process.env.SHELL || 'bash';
+
+// Spawn the PTY process
+const ptyProcess = pty.spawn(shell, [], {
+    name: 'xterm-color',
+    cols: 80,
+    rows: 30,
+    cwd: "/workspace",
+});
+
+ptyProcess.onData((data) => {
+    io.emit("terminal-output", data);
+})
+ptyProcess.onExit(({exitCode, signal}) => {
+    console.log(`PTY process exited with code: ${exitCode}, signal: ${signal}`);
+})
+
+io.on("connection",(socket)=>{
+    console.log("New connection",socket.id);
+    socket.on("terminal-input",(data)=>{
+        ptyProcess.write(data);
+    })
+    socket.on("disconnect",()=>{
+        console.log("Client disconnected",socket.id);
+    })
+})
 /**
  * @route GET /api/agent/listFiles
  * @description Lists all files in the working directory and its subdirectories. Returns a JSON object with the file paths relative to the working directory. exclude directories like node_modules, .git,dist, etc.
@@ -209,4 +243,4 @@ app.post("/api/agent/createFile", async (req, res) => {
     });
 })
 
-export default app;
+export default httpserver;

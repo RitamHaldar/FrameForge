@@ -1,15 +1,26 @@
+import https from "https";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatMistralAI } from "@langchain/mistralai"
 import { createAgent } from "langchain";
 import { listFilesTool, readFilesTool, updateFilesTool } from "./tools.js";
 import { config } from "../config/config.js"
 
+const keepAliveAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 64,
+  keepAliveMsecs: 60000,
+});
+
 const model = new ChatMistralAI({
   model: "mistral-medium-latest",
   apiKey: config.MISTRALKEY,
-  temperature: 0.15,
+  temperature: 0.1,
   streaming: true,
-  //configuration: { baseURL: "https://integrate.api.nvidia.com/v1" },
+  /*configuration: {
+    baseURL: "https://integrate.api.nvidia.com/v1",
+    httpAgent: keepAliveAgent,
+    httpsAgent: keepAliveAgent,
+  },*/
 })
 
 export const agent = (createAgent({

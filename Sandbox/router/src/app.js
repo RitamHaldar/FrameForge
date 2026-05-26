@@ -1,10 +1,14 @@
 import express from "express";
-import { createProxyMiddleware } from "http-proxy-middleware";
+import { createProxyMiddleware } from "httpxy";
 import morgan from "morgan";
-
+import cors from "cors";
 
 const app = express();
 app.use(morgan("combined"));
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+}));
 
 app.get("/api/router/health", (req, res) => {
     res.status(200).json({ status: "Router server is healthy", service: "router" });

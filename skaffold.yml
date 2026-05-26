@@ -7,14 +7,23 @@ build:
   artifacts:
     - image: sandbox
       context: Sandbox/service
+      sync:
+        infer:
+          - "src/**"
       docker:
         dockerfile: dockerfile
     - image: router
       context: Sandbox/router
+      sync:
+        infer:
+          - "src/**"
       docker:
         dockerfile: dockerfile
     - image: agent
       context: Sandbox/agent
+      sync:
+        infer:
+          - "src/**"
       docker:
         dockerfile: dockerfile
     - image: template
@@ -34,6 +43,7 @@ manifests:
     - k8s/ingress.yml
     - k8s/sandbox-deployment.yml
     - k8s/sandbox-service.yml
+    - k8s/secrets.yml
     - k8s/router-deployment.yml
     - k8s/router-service.yml
     - k8s/rbac.yml

@@ -29,13 +29,13 @@ spec:
             - name: NVIDIA_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: my-secret
-                  key: NVDIA_KEY
+                  name: ai-secret
+                  key: NVIDIA_API_KEY
             - name: MISTRAL_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: ai-secret
-                  key: MYSTRAL_KEY
+                  key: MISTRAL_API_KEY
           livenessProbe:
             httpGet:
               path: /api/ai/healthz

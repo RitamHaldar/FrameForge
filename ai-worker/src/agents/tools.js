@@ -3,8 +3,10 @@ import { tool } from "langchain/tools"
 import * as z from "zod"
 export const listFilesTool = tool(
     async ({ }, config) => {
-        console.log("list Files called")
-        const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/listFiles`)
+        const writer = config.writer
+        writer("Listing files...")
+        const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/listFiles`);
+        writer("Files listed." + response.data.data.join(",") + "\n")
         return JSON.stringify(response.data.data)
     }, {
     name: "list_files",
@@ -15,8 +17,10 @@ export const listFilesTool = tool(
 
 export const readFilesTool = tool(
     async ({ files = [] }, config) => {
-        console.log("read Files called")
+        const writer = config.writer
+        writer("Reading files...")
         const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/readFile?files=${files.join(",")}`)
+        writer("Files read." + response.data.data.join(",") + "\n")
         return JSON.stringify(response.data.data)
     }, {
     name: "read_files",
@@ -29,10 +33,12 @@ export const readFilesTool = tool(
 
 export const updateFilesTool = tool(
     async ({ files }, config) => {
-        console.log("update Files called")
+        const writer = config.writer
+        writer("Updating files..." + files.map(f => f.file).join(","))
         const response = await axios.patch(`http://sandbox-service-${config.context.projectId}:3000/api/agent/updateFile`, {
             updates: files
         })
+        writer("Files updated.")
         return JSON.stringify(response.data.data)
     },
     {
