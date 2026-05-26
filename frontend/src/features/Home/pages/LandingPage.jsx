@@ -1,260 +1,227 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { gsap } from 'gsap';
-import Lenis from 'lenis';
-import { useHome } from '../hooks/useHome';
+import { useHome } from '../Hooks/useHome';
 
 export default function LandingPage() {
-    const navigate = useNavigate();
-    const { createSandbox, isLoadingSandbox, sandboxError } = useHome();
-    const [isCreating, setIsCreating] = useState(false);
-    const heroRef = useRef(null);
+  const navigate = useNavigate();
+  const { initWorkspace } = useHome();
+  const [isCreating, setIsCreating] = useState(false);
 
-    useEffect(() => {
-        // Initialize Lenis for smooth scrolling
-        const lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            direction: 'vertical',
-            gestureDirection: 'vertical',
-            smooth: true,
-        });
-
-        function raf(time) {
-            lenis.raf(time);
-            requestAnimationFrame(raf);
-        }
-        requestAnimationFrame(raf);
-
-        // Initial GSAP animation
-        const tl = gsap.timeline();
-        tl.fromTo(
-            ".hero-text",
-            { y: 50, opacity: 0 },
-            { y: 0, opacity: 1, duration: 1, stagger: 0.2, ease: "power3.out", delay: 0.2 }
-        ).fromTo(
-            ".hero-button",
-            { scale: 0.9, opacity: 0 },
-            { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" },
-            "-=0.4"
-        );
-
-        return () => {
-            lenis.destroy();
-        };
-    }, []);
-
-    const handleCreateSandbox = async () => {
-        setIsCreating(true);
-        try {
-            const data = await createSandbox({ restoreOnly: false });
-            if (data && data.success) {
-                navigate('/dashboard');
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsCreating(false);
-        }
-    };
-
-    const { scrollYProgress } = useScroll();
-    const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%']);
-
-    // Direct mouse-tracking hover handler (super fast, no re-renders)
+  useEffect(() => {
     const handleMouseMove = (e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        e.currentTarget.style.setProperty('--mouse-x', `${x}px`);
-        e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      document.body.style.setProperty('--mouse-x', `${x}%`);
+      document.body.style.setProperty('--mouse-y', `${y}%`);
     };
+    document.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
 
-    return (
-        <div className="relative min-h-[220vh] bg-[#030306] text-white font-sans overflow-hidden">
+  const handleCreateSandbox = async () => {
+    setIsCreating(true);
+    // Force new workspace to bypass any locally stored sandbox
+    await initWorkspace(true);
+    setIsCreating(false);
+    navigate('/dashboard');
+  };
 
-            {/* Premium Floating Navigation Bar */}
-            <header className="fixed top-5 left-1/2 -translate-x-1/2 w-[90%] max-w-[1200px] h-16 bg-[#0c0c14]/65 backdrop-blur-xl border border-white/5 rounded-2xl flex items-center justify-between px-6 z-50 shadow-[0_15px_35px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.02)_inset] transition-all duration-300 hover:border-white/10 select-none">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#6366f1] to-[#4edea3] flex items-center justify-center border border-white/20 shadow-[0_0_15px_rgba(99,102,241,0.4)]">
-                        <span className="material-symbols-outlined text-white text-[16px] animate-[pulse_3s_infinite]" style={{ fontVariationSettings: "'FILL' 1" }}>diamond</span>
-                    </div>
-                    <span className="font-display font-black text-[15px] uppercase tracking-[0.25em] text-white">FrameForge</span>
-                </div>
-
-                <nav className="hidden md:flex items-center gap-8 text-[11.5px] font-code-md text-outline hover:text-white transition-colors tracking-widest uppercase">
-                    <a href="#features" className="hover:text-white transition-colors relative group py-2">
-                        Features
-                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full"></span>
-                    </a>
-                    <a href="#performance" className="hover:text-white transition-colors relative group py-2">
-                        Performance
-                        <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full"></span>
-                    </a>
-                    <a href="#docs" className="hover:text-outline-variant transition-colors py-2 opacity-50 cursor-not-allowed">Docs</a>
-                </nav>
-
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={handleCreateSandbox}
-                        disabled={isCreating || isLoadingSandbox}
-                        className="px-4 py-2 bg-gradient-to-r from-primary-container to-[#6366f1] text-white rounded-xl font-code-md text-[11px] font-bold tracking-widest uppercase hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all active:scale-95 disabled:opacity-50"
-                    >
-                        Launch Free
-                    </button>
-                </div>
-            </header>
-
-            {/* Dynamic Mesh & Glow Orbs */}
-            <div className="fixed inset-0 z-0 pointer-events-none">
-                <motion.div
-                    style={{ y }}
-                    className="absolute inset-0 opacity-[0.03] bg-noise"
-                ></motion.div>
-
-                {/* Animated fluid glows */}
-                <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[50%] rounded-full bg-primary-container/10 blur-[140px] animate-ambient-glow"></div>
-                <div className="absolute bottom-[20%] right-[-10%] w-[50%] h-[60%] rounded-full bg-tertiary-container/5 blur-[160px] animate-ambient-glow" style={{ animationDelay: '-5s' }}></div>
-
-                {/* Fine Dot Grid Pattern */}
-                <div className="absolute inset-0 dot-grid opacity-30"></div>
-            </div>
-
-            {/* Hero Section */}
-            <main ref={heroRef} className="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 text-center pt-24">
-                {/* Glowing Badge */}
-                <div className="hero-text mb-8 inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-[#101018]/80 border border-white/5 backdrop-blur-md shadow-inner">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-tertiary shadow-[0_0_8px_#4edea3]"></span>
-                    </span>
-                    <span className="font-label-caps text-[10px] tracking-[0.2em] text-[#c3c0ff] font-bold">V1.2 Active Agent Sandboxes</span>
-                </div>
-
-                {/* Main Title with Premium Gradient */}
-                <h1 className="hero-text text-5xl md:text-8xl font-display font-extrabold tracking-tighter leading-[1.05] mb-8 bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-white/40 drop-shadow-sm select-none">
-                    Deploy sandboxes. <br />
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-[#a855f7] to-tertiary font-black">Forge ideas live.</span>
-                </h1>
-
-                {/* Compelling Subdescription */}
-                <p className="hero-text max-w-2xl text-[15px] md:text-[17px] text-[#918fa1] mb-12 leading-relaxed font-body font-medium select-none">
-                    Click below to boot up complete containerized Linux runtimes integrated with custom AI agents, code editors, and live browser logs in milliseconds.
-                </p>
-
-                {/* Provision Button with micro-effects */}
-                <button
-                    onClick={handleCreateSandbox}
-                    disabled={isCreating || isLoadingSandbox}
-                    className="hero-button group relative overflow-hidden inline-flex items-center justify-center gap-3.5 px-10 py-5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] text-white rounded-2xl font-code-md text-[13px] font-bold tracking-widest uppercase transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-75 disabled:hover:scale-100 disabled:cursor-not-allowed shadow-[0_15px_40px_rgba(79,70,229,0.35)] hover:shadow-[0_20px_50px_rgba(79,70,229,0.55)] border border-white/10"
-                >
-                    {/* Animated Reflection Overlay */}
-                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -left-[100%] group-hover:left-[100%] transition-all duration-1000 ease-in-out"></div>
-
-                    {(isCreating || isLoadingSandbox) ? (
-                        <>
-                            <span className="material-symbols-outlined animate-spin text-[18px]">cycle</span>
-                            <span>Allocating sandbox runtime...</span>
-                        </>
-                    ) : (
-                        <>
-                            <span className="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">rocket_launch</span>
-                            <span>Launch Sandbox</span>
-                        </>
-                    )}
-                </button>
-
-                {sandboxError && (
-                    <p className="mt-5 text-error text-[12px] font-code-md tracking-wide px-4 py-2 rounded-lg bg-error-container/20 border border-error/20 animate-pulse">{sandboxError}</p>
-                )}
-            </main>
-
-            {/* Premium Highlight Card Showcase Section */}
-            <section id="features" className="relative z-10 px-6 py-28 max-w-[1200px] mx-auto border-t border-white/5 select-none">
-                <div className="text-center mb-20">
-                    <span className="font-label-caps text-[10px] text-primary tracking-[0.3em] font-extrabold uppercase">Engineered Architecture</span>
-                    <h2 className="text-3xl md:text-5xl font-display font-bold mt-4 tracking-tight">The Ultimate Agent Workspace</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Feature Card 1 */}
-                    <div
-                        onMouseMove={handleMouseMove}
-                        className="spotlight-card spotlight-border bg-[#09090f]/75 border border-white/5 rounded-3xl p-8 hover:border-white/10 transition-all flex flex-col gap-5 group shadow-xl relative overflow-hidden"
-                    >
-                        <div className="w-12 h-12 rounded-2xl bg-primary-container/20 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-110 group-hover:border-primary/40 transition-transform duration-300">
-                            <span className="material-symbols-outlined text-[24px]">box</span>
-                        </div>
-                        <h3 className="text-[17px] font-bold text-white tracking-wide mt-2">Zero-Config Pods</h3>
-                        <p className="text-[13px] text-[#918fa1] leading-relaxed">
-                            Complete, secure cloud sandboxes spinning up in under a second. Run web applications, backend APIs, and scripts with preconfigured system packages.
-                        </p>
-                    </div>
-
-                    {/* Feature Card 2 */}
-                    <div
-                        onMouseMove={handleMouseMove}
-                        className="spotlight-card spotlight-border bg-[#09090f]/75 border border-white/5 rounded-3xl p-8 hover:border-white/10 transition-all flex flex-col gap-5 group shadow-xl relative overflow-hidden"
-                    >
-                        <div className="w-12 h-12 rounded-2xl bg-tertiary-container/20 border border-tertiary/20 flex items-center justify-center text-tertiary group-hover:scale-110 group-hover:border-tertiary/40 transition-transform duration-300">
-                            <span className="material-symbols-outlined text-[24px]">smart_toy</span>
-                        </div>
-                        <h3 className="text-[17px] font-bold text-white tracking-wide mt-2">Autonomous Agent</h3>
-                        <p className="text-[13px] text-[#918fa1] leading-relaxed">
-                            An integrated AI co-developer that writes premium features, builds robust pipelines, compiles source trees, and automatically self-heals terminal exceptions.
-                        </p>
-                    </div>
-
-                    {/* Feature Card 3 */}
-                    <div
-                        onMouseMove={handleMouseMove}
-                        className="spotlight-card spotlight-border bg-[#09090f]/75 border border-white/5 rounded-3xl p-8 hover:border-white/10 transition-all flex flex-col gap-5 group shadow-xl relative overflow-hidden"
-                    >
-                        <div className="w-12 h-12 rounded-2xl bg-[#ec4899]/10 border border-[#ec4899]/20 flex items-center justify-center text-[#ec4899] group-hover:scale-110 group-hover:border-[#ec4899]/40 transition-transform duration-300">
-                            <span className="material-symbols-outlined text-[24px]">terminal</span>
-                        </div>
-                        <h3 className="text-[17px] font-bold text-white tracking-wide mt-2">Workspace Console</h3>
-                        <p className="text-[13px] text-[#918fa1] leading-relaxed">
-                            Fully interactive shell interface, robust Monaco text editor, customizable mobile-frame preview panels, and real-time console feedback.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            {/* Performance Statistics Metrics */}
-            <section id="performance" className="relative z-10 px-6 py-24 max-w-[1200px] mx-auto border-t border-white/5 select-none">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-                    <div className="flex flex-col gap-2.5">
-                        <span className="text-4xl md:text-6xl font-display font-black text-gradient bg-gradient-to-r from-primary to-[#818cf8]">&lt; 0.8s</span>
-                        <span className="text-[12px] font-code-md text-outline uppercase tracking-widest font-bold mt-1">Boot Time Provisioning</span>
-                        <p className="text-[12.5px] text-[#918fa1] leading-relaxed max-w-xs mx-auto mt-2">Containers initialize from cold caches instantly, minimizing load latency to zero.</p>
-                    </div>
-                    <div className="flex flex-col gap-2.5">
-                        <span className="text-4xl md:text-6xl font-display font-black text-gradient bg-gradient-to-r from-[#818cf8] to-tertiary">100%</span>
-                        <span className="text-[12px] font-code-md text-outline uppercase tracking-widest font-bold mt-1">Kernel Isolation</span>
-                        <p className="text-[12.5px] text-[#918fa1] leading-relaxed max-w-xs mx-auto mt-2">Each environment resides in an isolated MicroVM, ensuring absolute security and performance.</p>
-                    </div>
-                    <div className="flex flex-col gap-2.5">
-                        <span className="text-4xl md:text-6xl font-display font-black text-gradient bg-gradient-to-r from-tertiary to-[#22d3ee]">100K+</span>
-                        <span className="text-[12px] font-code-md text-outline uppercase tracking-widest font-bold mt-1">API Compute Units</span>
-                        <p className="text-[12.5px] text-[#918fa1] leading-relaxed max-w-xs mx-auto mt-2">Generous compute resources pre-allocated to execute comprehensive model computations.</p>
-                    </div>
-                </div>
-            </section>
-
-            {/* Tech Stack Banner */}
-            <footer className="relative z-10 py-16 border-t border-white/5 bg-[#08080c]/50 backdrop-blur-md select-none text-center">
-                <div className="max-w-4xl mx-auto px-6 flex flex-col gap-5 items-center">
-                    <span className="font-label-caps text-[9px] text-outline/50 tracking-[0.25em] font-extrabold uppercase">POWERING MODERN ENVIRONMENTS</span>
-                    <div className="flex flex-wrap gap-8 md:gap-14 justify-center items-center opacity-40 hover:opacity-60 transition-opacity mt-2">
-                        <span className="font-display text-[15px] font-extrabold tracking-tight text-white flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">javascript</span>NODE.JS</span>
-                        <span className="font-display text-[15px] font-extrabold tracking-tight text-white flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">css</span>TAILWIND</span>
-                        <span className="font-display text-[15px] font-extrabold tracking-tight text-white flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">widgets</span>REACT.JS</span>
-                        <span className="font-display text-[15px] font-extrabold tracking-tight text-white flex items-center gap-1.5"><span className="material-symbols-outlined text-[18px]">terminal</span>LINUX SHELL</span>
-                    </div>
-                    </div>
-            </footer>
+  return (
+    <div className="font-body-md text-body-md selection:bg-tertiary-container selection:text-on-tertiary-container">
+      {/* Top Navigation Bar */}
+      <nav className="fixed top-0 w-full z-50 bg-surface-dim/70 backdrop-blur-md border-b border-outline-variant/30 shadow-sm">
+        <div className="flex justify-between items-center h-16 px-margin-desktop max-w-container-max mx-auto">
+          <div className="font-display-lg text-2xl font-bold text-primary tracking-tighter">FrameForge</div>
+          <div className="hidden md:flex items-center space-x-8">
+            <a className="text-primary font-bold border-b-2 border-primary pb-1 font-label-caps text-label-caps" href="#">Platform</a>
+            <a className="text-on-surface-variant hover:text-on-surface transition-colors font-label-caps text-label-caps" href="#">Solutions</a>
+            <a className="text-on-surface-variant hover:text-on-surface transition-colors font-label-caps text-label-caps" href="#">Docs</a>
+          </div>
+          <button 
+            onClick={handleCreateSandbox}
+            disabled={isCreating}
+            className="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-label-caps text-label-caps font-bold active:scale-95 transition-transform hover:shadow-[0_0_20px_rgba(195,192,255,0.3)] disabled:opacity-50"
+          >
+            {isCreating ? 'Creating...' : 'Create Sandbox'}
+          </button>
         </div>
-    );
+      </nav>
+      {/* Main Content */}
+      <main className="relative pt-32">
+        {/* Atmospheric Background Glows */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+          <div className="absolute top-[-10%] left-[10%] w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[20%] right-[-5%] w-[600px] h-[600px] bg-tertiary-fixed-dim/5 rounded-full blur-[150px]"></div>
+        </div>
+        {/* Hero Section */}
+        <section className="max-w-container-max mx-auto px-margin-desktop text-center mb-32">
+          <div className="inline-flex items-center gap-2 px-3 py-1 mb-8 rounded-full border border-tertiary/20 bg-tertiary/5 text-tertiary-fixed-dim font-label-caps text-label-caps">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span>
+            </span>
+            v2.4.0 Live Engine
+          </div>
+          <h1 className="font-display-lg text-[64px] leading-[1.1] font-bold text-on-surface mb-6 tracking-tight">
+            Forge the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-tertiary">Future of Frontend.</span>
+          </h1>
+          <p className="font-body-md text-xl text-on-surface-variant max-w-2xl mx-auto mb-10 leading-relaxed">
+            The elite sandbox environment for AI-orchestrated UI development. Deploy micro-apps in seconds with zero configuration.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+            <button 
+              onClick={handleCreateSandbox}
+              disabled={isCreating}
+              className="relative group px-8 py-4 rounded-xl bg-gradient-to-br from-primary to-secondary text-on-primary font-bold text-lg transition-all duration-300 hover:scale-[1.02] shadow-lg hover:shadow-primary/20 disabled:opacity-50"
+            >
+              <span className="relative z-10">{isCreating ? 'Creating Sandbox...' : 'Create Sandbox'}</span>
+              <div className="absolute inset-0 rounded-xl border border-primary/50 group-hover:border-tertiary/50 transition-colors"></div>
+              <div className="absolute inset-0 rounded-xl blur-xl bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            </button>
+            <button className="px-8 py-4 rounded-xl glass-panel text-on-surface font-semibold hover:bg-surface-variant/50 transition-all border-outline-variant/30">
+              View Enterprise Demo
+            </button>
+          </div>
+          {/* Mockup */}
+          <div className="relative max-w-5xl mx-auto animate-float">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-tertiary/20 to-secondary/20 rounded-2xl blur-3xl opacity-30"></div>
+            <div className="relative glass-panel rounded-2xl p-2 border border-outline-variant/50 overflow-hidden shadow-2xl">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/30 bg-surface-container-lowest/50">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/40"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/40"></div>
+                </div>
+                <div className="mx-auto flex items-center gap-2 px-3 py-1 bg-surface-container-lowest border border-outline-variant/50 rounded-md text-[10px] font-label-caps text-on-surface-variant">
+                  <span className="material-symbols-outlined text-sm">lock</span>
+                  frameforge.dev/sandbox/a7-neural-flow
+                </div>
+              </div>
+              <img alt="FrameForge Dashboard" className="w-full h-auto rounded-b-xl grayscale-[0.2] hover:grayscale-0 transition-all duration-700" data-alt="A high-fidelity glassmorphic dashboard interface for a code development tool. The UI features deep obsidian backgrounds, sleek sidebar navigation with icons, and a central workspace showing a vibrant code editor with syntax highlighting in lavender and mint green. Transparent panels and 0.5px glowing indigo borders create depth. The lighting is low-key with ambient atmospheric glows of emerald and indigo reflecting off the glass surfaces." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXNQ5SdF-CxnE0mRzEiNxtLPKbjtDe_p_xOjCp_Wi7eXr9IU45BZcefHg4wR5gCGmrJL_6VJFbpiYnJgtoJXN4XPSVQL7awk445ixoQeyyR-NBhY4zjJ1S-iel0pgF6j8e5wf_mGUyx0MqbfupyOtrDtqcBqwTpqW6t5AnpaaZbM_WGGJX5lgfk7aoYrIWPQ62pEZHrFhnVoYFn3EBzQIBBPGFVDj4Tvvo_BUOSd6GIIXAwYM6THaDj2LiPNkoWLlVGSlxnC7VGWvm"/>
+            </div>
+          </div>
+        </section>
+        {/* Feature Grid Section */}
+        <section className="max-w-container-max mx-auto px-margin-desktop py-24 border-t border-outline-variant/20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="group p-8 glass-panel rounded-2xl hover:border-tertiary/40 transition-all duration-500">
+              <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary/10 mb-6 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-primary text-3xl font-light">psychology</span>
+              </div>
+              <h3 className="font-headline-lg text-headline-lg text-on-surface mb-3">Neural Orchestration</h3>
+              <p className="text-on-surface-variant font-body-sm leading-relaxed">
+                LLM-driven component synthesis that understands your design system tokens and architectural patterns instantly.
+              </p>
+            </div>
+            <div className="group p-8 glass-panel rounded-2xl hover:border-primary/40 transition-all duration-500">
+              <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-tertiary/10 mb-6 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-tertiary text-3xl font-light">query_stats</span>
+              </div>
+              <h3 className="font-headline-lg text-headline-lg text-on-surface mb-3">Real-time Telemetry</h3>
+              <p className="text-on-surface-variant font-body-sm leading-relaxed">
+                Deep-level engine metrics tracking render cycles, hydration speed, and memory pressure in a real-time stream.
+              </p>
+            </div>
+            <div className="group p-8 glass-panel rounded-2xl hover:border-secondary/40 transition-all duration-500">
+              <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-secondary/10 mb-6 group-hover:scale-110 transition-transform">
+                <span className="material-symbols-outlined text-secondary text-3xl font-light">bolt</span>
+              </div>
+              <h3 className="font-headline-lg text-headline-lg text-on-surface mb-3">Zero-latency Deploys</h3>
+              <p className="text-on-surface-variant font-body-sm leading-relaxed">
+                Instant global edge distribution using our proprietary protocol. See your changes live in under 200ms.
+              </p>
+            </div>
+          </div>
+        </section>
+        {/* Built for the 1% Section */}
+        <section className="relative py-32 overflow-hidden">
+          <div className="max-w-container-max mx-auto px-margin-desktop grid grid-cols-1 lg:grid-cols-2 items-center gap-20">
+            <div>
+              <h2 className="font-display-lg text-headline-lg text-primary mb-6">Engineered for the 1%.</h2>
+              <p className="font-body-md text-lg text-on-surface-variant mb-8 leading-relaxed">
+                Standard tools are built for the masses. FrameForge is built for the architects who demand surgical precision and industrial-grade throughput.
+              </p>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 group">
+                  <div className="flex-1 glass-panel p-4 rounded-xl flex justify-between items-center border-l-2 border-l-tertiary">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">CORE CLOCK</span>
+                    <span className="font-code-md text-code-md text-tertiary">3.8 GHZ SYNC</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 group">
+                  <div className="flex-1 glass-panel p-4 rounded-xl flex justify-between items-center border-l-2 border-l-primary">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">LATENCY THRESHOLD</span>
+                    <span className="font-code-md text-code-md text-primary">&lt; 0.4ms</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 group">
+                  <div className="flex-1 glass-panel p-4 rounded-xl flex justify-between items-center border-l-2 border-l-secondary">
+                    <span className="font-label-caps text-label-caps text-on-surface-variant">RENDER LOAD</span>
+                    <span className="font-code-md text-code-md text-secondary">OPTIMAL (144FPS)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute -top-10 -right-10 w-64 h-64 bg-tertiary/10 blur-[80px] rounded-full"></div>
+              <div className="relative bg-terminal-bg rounded-xl border border-outline-variant p-6 font-code-md text-code-md shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between mb-6 opacity-60">
+                  <span>frameforge_os // kernel_shell</span>
+                  <span className="material-symbols-outlined text-xs">terminal</span>
+                </div>
+                <div className="space-y-2 text-on-surface-variant">
+                  <p><span className="text-tertiary-fixed-dim">λ</span> init --profile=performance</p>
+                  <p className="text-primary-fixed">Booting neural orchestrator core...</p>
+                  <p>[OK] Memory allocated: 4.2GB Heap</p>
+                  <p>[OK] JIT Compiler: Optimized (v8-gen)</p>
+                  <p className="text-tertiary">[SUCCESS] Connection established to global_mesh</p>
+                  <p className="animate-pulse">_</p>
+                </div>
+                {/* Floating HUD Overlay */}
+                <div className="absolute bottom-4 right-4 glass-panel px-3 py-2 rounded-lg text-[10px] flex items-center gap-2 border-tertiary/20">
+                  <div className="w-1.5 h-1.5 rounded-full bg-tertiary"></div>
+                  Uptime: 99.999%
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        {/* CTA Section */}
+        <section className="max-w-container-max mx-auto px-margin-desktop py-24 mb-32">
+          <div className="relative glass-panel rounded-3xl p-12 md:p-20 text-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-tertiary/5"></div>
+            <div className="relative z-10">
+              <h2 className="font-display-lg text-4xl md:text-5xl font-bold mb-6">Ready to forge?</h2>
+              <p className="text-on-surface-variant max-w-xl mx-auto mb-10 text-lg">
+                Join the elite community of developers building the next generation of high-performance web applications.
+              </p>
+              <button 
+                onClick={handleCreateSandbox}
+                disabled={isCreating}
+                className="bg-primary text-on-primary-fixed px-10 py-5 rounded-full font-bold text-xl hover:shadow-[0_0_30px_rgba(226,223,255,0.4)] transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isCreating ? 'Initializing...' : 'Initialize Sandbox'}
+              </button>
+            </div>
+          </div>
+        </section>
+      </main>
+      {/* Footer */}
+      <footer className="bg-sidebar-bg border-t border-outline-variant/20 w-full py-12">
+        <div className="flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-gutter">
+          <div className="flex flex-col gap-2">
+            <div className="font-display-lg text-xl font-bold text-primary">FrameForge</div>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">© 2024 FrameForge AI. All rights reserved.</p>
+          </div>
+          <div className="flex gap-8">
+            <a className="text-on-surface-variant hover:text-tertiary transition-colors font-label-caps text-label-caps opacity-80 hover:opacity-100" href="#">Privacy</a>
+            <a className="text-on-surface-variant hover:text-tertiary transition-colors font-label-caps text-label-caps opacity-80 hover:opacity-100" href="#">Status</a>
+            <a className="text-on-surface-variant hover:text-tertiary transition-colors font-label-caps text-label-caps opacity-80 hover:opacity-100" href="#">GitHub</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }

@@ -6,8 +6,9 @@ export const listFilesTool = tool(
         const writer = config.writer
         writer("Listing files...")
         const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/listFiles`);
-        writer("Files listed." + response.data.data.join(",") + "\n")
-        return JSON.stringify(response.data.data)
+        const fileList = Array.isArray(response.data.data) ? response.data.data : [];
+        writer("Files listed.." + fileList.join(",") + "\n")
+        return JSON.stringify(fileList)
     }, {
     name: "list_files",
     description: "List all the files in the project directory. This is useful for understanding what files are available to work with.",
@@ -20,7 +21,10 @@ export const readFilesTool = tool(
         const writer = config.writer
         writer("Reading files...")
         const response = await axios.get(`http://sandbox-service-${config.context.projectId}:3000/api/agent/readFile?files=${files.join(",")}`)
-        writer("Files read." + response.data.data.join(",") + "\n")
+        const fileNames = Array.isArray(response.data.data)
+            ? response.data.data.map(obj => Object.keys(obj)[0]).join(",")
+            : "";
+        writer("Files read. " + fileNames + "\n")
         return JSON.stringify(response.data.data)
     }, {
     name: "read_files",

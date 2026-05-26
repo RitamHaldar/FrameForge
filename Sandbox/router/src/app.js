@@ -9,7 +9,7 @@ const app = express();
 app.use(morgan("combined"));
 app.use(cors({
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 }));
 
 app.get("/api/router/health", (req, res) => {
