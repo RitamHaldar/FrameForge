@@ -13,7 +13,7 @@ const WORKSPACE_DIR = "/workspace";
 app.use(morgan("combined"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-const io = new Server(server,{
+const io = new Server(httpserver,{
     cors:{
         origin:"*",
         methods:["GET","POST","PUT","PATCH","DELETE"]

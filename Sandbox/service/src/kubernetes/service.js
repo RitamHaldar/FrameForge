@@ -11,7 +11,6 @@ export async function createService(sandboxId) {
         },
         "spec": {
             "selector": {
-                "app": "sandbox-pod",
                 "sandboxId": sandboxId
             },
             "ports": [
