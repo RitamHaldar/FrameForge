@@ -7,14 +7,14 @@ export const startSandbox = async () => {
   return response.data;
 };
 
-export const invokeAi = async (message, projectId, onEvent) => {
+export const invokeAi = async (message, projectId, agentNo, onEvent) => {
   try {
     const response = await fetch(`${API_BASE}/ai/invoke`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message, projectId }),
+      body: JSON.stringify({ message, projectId, agentNo }),
     });
 
     if (!response.ok) {

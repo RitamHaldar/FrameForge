@@ -40,13 +40,99 @@ const getFileIcon = (filename) => {
 export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
+  const previewTerminalRef = useRef(null);
+  const previewXtermRef = useRef(null);
   const [viewMode, setViewMode] = useState('pc');
   const [activeTab, setActiveTab] = useState('preview');
   const [isReloading, setIsReloading] = useState(false);
   const [isTerminalReloading, setIsTerminalReloading] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showPreviewTerminal, setShowPreviewTerminal] = useState(false);
   const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!showPreviewTerminal || !sandbox || !socketRef || !socketRef.current || !previewTerminalRef.current) return;
+
+    let term;
+    let resizeObserver;
+    let handleOutput;
+
+    try {
+      // Initialize xterm with transparent background, JetBrains Mono, white cursor, and 1.5 line height
+      term = new Terminal({
+        theme: {
+          background: 'transparent',
+          foreground: '#ffffff',
+          cursor: '#ffffff',
+          cursorBlink: '#ffffff',
+          selectionBackground: 'rgba(255, 255, 255, 0.15)',
+          black: '#000000',
+          red: '#ff5f56',
+          green: '#a1a1aa',
+          yellow: '#ffbd2e',
+          blue: '#e4e4e7',
+          magenta: '#ffffff',
+          cyan: '#ffffff',
+          white: '#ffffff',
+        },
+        fontFamily: '"JetBrains Mono", monospace',
+        fontSize: 12,
+        cursorBlink: true,
+        lineHeight: 1.5,
+      });
+
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(previewTerminalRef.current);
+
+      // Output initial bash prompt matching the sandbox ID
+      term.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
+
+      const handleFit = () => {
+        if (previewTerminalRef.current && previewTerminalRef.current.clientWidth > 0 && previewTerminalRef.current.clientHeight > 0) {
+          try {
+            fitAddon.fit();
+          } catch (e) {
+            // Ignore transient measurement errors
+          }
+        }
+      };
+
+      setTimeout(handleFit, 150); // wait for spring layout animation to settle
+
+      resizeObserver = new ResizeObserver(handleFit);
+      resizeObserver.observe(previewTerminalRef.current);
+
+      const socket = socketRef.current;
+
+      handleOutput = (data) => {
+        term.write(data);
+      };
+
+      socket.on('terminal-output', handleOutput);
+
+      term.onData((data) => {
+        socket.emit('terminal-input', data);
+      });
+
+      previewXtermRef.current = term;
+    } catch (err) {
+      console.error("Failed to initialize preview terminal:", err);
+    }
+
+    return () => {
+      try {
+        if (resizeObserver) resizeObserver.disconnect();
+        if (term) term.dispose();
+        if (socketRef.current && handleOutput) {
+          socketRef.current.off('terminal-output', handleOutput);
+        }
+      } catch (err) {
+        console.error("Cleanup error in preview terminal:", err);
+      }
+    };
+  }, [showPreviewTerminal, sandbox, socketRef, terminalVersion]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -109,68 +195,84 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   useEffect(() => {
     if (!sandbox || !socketRef || !socketRef.current || !terminalRef.current) return;
 
-    // Initialize xterm with transparent background, JetBrains Mono, white cursor, and 1.5 line height
-    const term = new Terminal({
-      theme: {
-        background: 'transparent',
-        foreground: '#ffffff',
-        cursor: '#ffffff',
-        cursorBlink: '#ffffff',
-        selectionBackground: 'rgba(255, 255, 255, 0.15)',
-        black: '#000000',
-        red: '#ff5f56',
-        green: '#a1a1aa',
-        yellow: '#ffbd2e',
-        blue: '#e4e4e7',
-        magenta: '#ffffff',
-        cyan: '#ffffff',
-        white: '#ffffff',
-      },
-      fontFamily: '"JetBrains Mono", monospace',
-      fontSize: 13,
-      cursorBlink: true,
-      lineHeight: 1.5,
-    });
-    
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
-    term.open(terminalRef.current);
-    
-    // Output initial bash prompt matching the sandbox ID
-    term.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
-    
-    const handleFit = () => {
-      if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
-        try {
-          fitAddon.fit();
-        } catch (e) {
-          // Ignore transient measurement errors
+    let term;
+    let resizeObserver;
+    let handleOutput;
+
+    try {
+      // Initialize xterm with transparent background, JetBrains Mono, white cursor, and 1.5 line height
+      term = new Terminal({
+        theme: {
+          background: 'transparent',
+          foreground: '#ffffff',
+          cursor: '#ffffff',
+          cursorBlink: '#ffffff',
+          selectionBackground: 'rgba(255, 255, 255, 0.15)',
+          black: '#000000',
+          red: '#ff5f56',
+          green: '#a1a1aa',
+          yellow: '#ffbd2e',
+          blue: '#e4e4e7',
+          magenta: '#ffffff',
+          cyan: '#ffffff',
+          white: '#ffffff',
+        },
+        fontFamily: '"JetBrains Mono", monospace',
+        fontSize: 13,
+        cursorBlink: true,
+        lineHeight: 1.5,
+      });
+
+      const fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      term.open(terminalRef.current);
+
+      // Output initial bash prompt matching the sandbox ID
+      term.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
+
+      const handleFit = () => {
+        if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+          try {
+            fitAddon.fit();
+          } catch (e) {
+            // Ignore transient measurement errors
+          }
         }
-      }
-    };
+      };
 
-    // Slight delay to ensure DOM is ready for measuring
-    setTimeout(handleFit, 50);
-    
-    const resizeObserver = new ResizeObserver(handleFit);
-    resizeObserver.observe(terminalRef.current);
+      // Slight delay to ensure DOM is ready for measuring
+      setTimeout(handleFit, 50);
 
-    const socket = socketRef.current;
-    
-    socket.on('terminal-output', (data) => {
-      term.write(data);
-    });
+      resizeObserver = new ResizeObserver(handleFit);
+      resizeObserver.observe(terminalRef.current);
 
-    term.onData((data) => {
-      socket.emit('terminal-input', data);
-    });
-    
-    xtermRef.current = term;
+      const socket = socketRef.current;
+
+      handleOutput = (data) => {
+        term.write(data);
+      };
+
+      socket.on('terminal-output', handleOutput);
+
+      term.onData((data) => {
+        socket.emit('terminal-input', data);
+      });
+
+      xtermRef.current = term;
+    } catch (err) {
+      console.error("Failed to initialize main terminal:", err);
+    }
 
     return () => {
-      resizeObserver.disconnect();
-      term.dispose();
-      socket.off('terminal-output');
+      try {
+        if (resizeObserver) resizeObserver.disconnect();
+        if (term) term.dispose();
+        if (socketRef.current && handleOutput) {
+          socketRef.current.off('terminal-output', handleOutput);
+        }
+      } catch (err) {
+        console.error("Cleanup error in main terminal:", err);
+      }
     };
   }, [sandbox, socketRef, terminalVersion]);
 
@@ -209,28 +311,27 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     >
       <PanelGroup orientation="vertical">
         <Panel defaultSize={60} minSize={30}>
-          <motion.div 
+          <motion.div
             layout
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className={`w-full h-full bg-surface-container/70 backdrop-blur-md border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-lg ${
-              maximizedPanel === 'preview' 
-                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container rounded-none' 
+            className={`w-full h-full bg-surface-container/70 backdrop-blur-md border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-lg ${maximizedPanel === 'preview'
+                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container rounded-none'
                 : 'relative'
-            }`}
+              }`}
           >
-             <header className="flex items-center justify-between px-4 py-1.5 bg-surface-container-lowest border-b border-outline-variant/25 z-20 select-none h-11">
+            <header className="flex items-center justify-between px-4 py-1.5 bg-surface-container-lowest border-b border-outline-variant/25 z-20 select-none h-11">
               {/* Left: macOS Window Traffic Lights & Navigation Controls */}
               <div className="flex items-center gap-3.5 z-20">
                 <div className="flex gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" />
                   <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" />
-                  <div 
+                  <div
                     onClick={() => setMaximizedPanel(maximizedPanel === 'preview' ? null : 'preview')}
-                    className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" 
+                    className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
                     title="Toggle Fullscreen"
                   />
                 </div>
-                
+
                 {/* Safari style Back/Forward arrows */}
                 <div className="hidden sm:flex items-center gap-0.5 text-on-surface-variant/40">
                   <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-low hover:text-on-surface transition-all cursor-not-allowed">
@@ -242,38 +343,53 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 </div>
               </div>
 
-              {/* Center: Safari Unified Smart Address Bar */}
-              <div className="flex-1 max-w-[360px] min-w-[120px] mx-4 relative z-20">
-                <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
-                  <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
-                    <span className="material-symbols-outlined text-[11px]">lock</span>
-                    <span className="font-mono-data text-[11px] text-on-surface tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
-                      {sandbox?.previewUrl ? new URL(sandbox.previewUrl).host : 'Loading sandbox...'}
-                    </span>
+              {/* Center: Safari Unified Smart Address Bar & Preview Terminal Toggle */}
+              <div className="flex-1 max-w-[480px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
+                <div className="flex-1 max-w-[340px]">
+                  <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
+                      <span className="material-symbols-outlined text-[11px]">lock</span>
+                      <span className="font-mono-data text-[11px] text-on-surface tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
+                        {sandbox?.previewUrl ? new URL(sandbox.previewUrl).host : 'Loading sandbox...'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleReload}
+                      className="flex items-center text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer"
+                      title="Reload Page"
+                    >
+                      <span className={`material-symbols-outlined text-[12px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
+                    </button>
                   </div>
-                  <button 
-                    onClick={handleReload} 
-                    className="flex items-center text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer"
-                    title="Reload Page"
-                  >
-                    <span className={`material-symbols-outlined text-[12px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
-                  </button>
                 </div>
+
+                {maximizedPanel === 'preview' && (
+                  <button
+                    onClick={() => setShowPreviewTerminal(!showPreviewTerminal)}
+                    className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${showPreviewTerminal
+                        ? 'bg-primary text-on-primary border-primary hover:opacity-90 shadow-md'
+                        : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
+                      }`}
+                  >
+                    <span className="material-symbols-outlined text-[12px]">terminal</span>
+                    <span>{showPreviewTerminal ? 'Hide Terminal' : 'Show Terminal'}</span>
+                  </button>
+                )}
               </div>
 
               {/* Right: Tab Mode, View Controls & active file tag */}
               <div className="flex items-center gap-2 z-20">
                 {/* PC/Mobile switchers */}
                 <div className="flex bg-surface-container rounded-md border border-outline-variant/20 overflow-hidden p-0.5 h-7">
-                  <button 
-                    onClick={() => setViewMode('pc')} 
+                  <button
+                    onClick={() => setViewMode('pc')}
                     className={`px-2 rounded transition-all flex items-center h-full ${viewMode === 'pc' ? 'bg-surface-container-high text-primary shadow-sm border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
                     title="Desktop View"
                   >
                     <span className="material-symbols-outlined text-[13px]">desktop_windows</span>
                   </button>
-                  <button 
-                    onClick={() => setViewMode('mobile')} 
+                  <button
+                    onClick={() => setViewMode('mobile')}
                     className={`px-2 rounded transition-all flex items-center h-full ${viewMode === 'mobile' ? 'bg-surface-container-high text-primary shadow-sm border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
                     title="Mobile View"
                   >
@@ -287,16 +403,15 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                     <div className="flex items-center gap-1.5 bg-surface-container px-2 py-0.5 rounded-md border border-outline-variant/20 h-7">
                       <div className="flex items-center bg-surface-container-lowest px-2 py-0.5 rounded border border-outline-variant/25 font-label-caps text-[9px] text-on-surface gap-1.5 h-5.5">
                         <span className="material-symbols-outlined text-outline text-[11px]">javascript</span>
-                        <span className="truncate max-w-[80px] font-semibold lowercase">{selectedFile.split('/').pop()}</span>
+                        <span className="truncate max-w-[80px] font-semibold lowercase">{selectedFile.split(/[/\\]/).pop()}</span>
                       </div>
                       <button
                         onClick={handleSave}
                         disabled={!isDirty || isSaving}
-                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded transition-all font-bold font-mono-data text-[9px] h-5.5 active:scale-95 border ${
-                          isDirty
+                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded transition-all font-bold font-mono-data text-[9px] h-5.5 active:scale-95 border ${isDirty
                             ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
                             : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
-                        }`}
+                          }`}
                         title="Save File (Ctrl+S)"
                       >
                         <span className={`material-symbols-outlined text-[11px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
@@ -306,25 +421,25 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   )
                 ) : (
                   <div className="flex bg-surface-container rounded-md p-0.5 border border-outline-variant/20 h-7">
-                    <button 
+                    <button
                       onClick={() => setActiveTab('preview')}
                       className={`px-2.5 rounded font-label-caps text-[10px] tracking-wider transition-all flex items-center gap-1.5 h-full ${activeTab === 'preview' ? 'bg-surface-container-high text-primary font-bold shadow-md border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><rect width="20" height="20" x="2" y="2" rx="2"/><path d="M2 10h20"/><circle cx="6" cy="6" r="0.75"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><rect width="20" height="20" x="2" y="2" rx="2" /><path d="M2 10h20" /><circle cx="6" cy="6" r="0.75" /></svg>
                       Preview
                     </button>
-                    <button 
+                    <button
                       onClick={() => setActiveTab('code')}
                       className={`px-2.5 rounded font-label-caps text-[10px] tracking-wider transition-all flex items-center gap-1.5 h-full ${activeTab === 'code' ? 'bg-surface-container-high text-primary font-bold shadow-md border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>
                       Code
                     </button>
                   </div>
                 )}
 
                 {/* Apple Share Button (Visual Premium detail) */}
-                <div 
+                <div
                   className="w-7 h-7 flex items-center justify-center hover:bg-surface-container rounded-md text-on-surface-variant hover:text-primary transition-all cursor-pointer border border-transparent hover:border-outline-variant/20"
                   title="Share Preview URL"
                   onClick={() => {
@@ -342,16 +457,15 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   <div className="flex items-center gap-1.5 ml-1">
                     <div className="flex items-center bg-surface-container px-2.5 py-1 rounded-md border border-outline-variant/25 font-label-caps text-[9px] text-on-surface gap-1.5 h-7">
                       <span className="material-symbols-outlined text-outline text-[12px]">javascript</span>
-                      <span className="truncate max-w-[80px]">{selectedFile.split('/').pop()}</span>
+                      <span className="truncate max-w-[80px]">{selectedFile.split(/[/\\]/).pop()}</span>
                     </div>
                     <button
                       onClick={handleSave}
                       disabled={!isDirty || isSaving}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-md transition-all font-bold font-mono-data text-[9px] h-7 active:scale-95 border ${
-                        isDirty
+                      className={`flex items-center gap-1 px-3 py-1 rounded-md transition-all font-bold font-mono-data text-[9px] h-7 active:scale-95 border ${isDirty
                           ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
                           : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
-                      }`}
+                        }`}
                       title="Save File (Ctrl+S)"
                     >
                       <span className={`material-symbols-outlined text-[12px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
@@ -362,7 +476,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
                 {/* Apple Revert Maximize button */}
                 {maximizedPanel === 'preview' && (
-                  <button 
+                  <button
                     onClick={() => setMaximizedPanel(null)}
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface hover:text-primary active:scale-90 cursor-pointer shadow-sm ml-1"
                     title="Exit Fullscreen"
@@ -377,9 +491,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 <div className="flex flex-col md:flex-row w-full h-full gap-4">
                   {/* Left Column: Live Preview Frame */}
                   <div className="flex-1 h-full flex items-center justify-center relative bg-black min-w-0">
-                    <motion.div 
-                      animate={{ 
-                        width: viewMode === 'mobile' ? 'auto' : '100%', 
+                    <motion.div
+                      animate={{
+                        width: viewMode === 'mobile' ? 'auto' : '100%',
                         height: viewMode === 'mobile' ? '100%' : '100%',
                         maxHeight: viewMode === 'mobile' ? 850 : '100%',
                         aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
@@ -389,7 +503,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                       className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full w-full h-full"
                     >
                       {/* Simulated Reload Overlay */}
-                      <motion.div 
+                      <motion.div
                         initial={false}
                         animate={{ opacity: isReloading ? 1 : 0 }}
                         transition={{ duration: 0.15 }}
@@ -397,10 +511,10 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                       />
 
                       {sandbox?.previewUrl ? (
-                        <iframe 
+                        <iframe
                           key={iframeKey}
-                          src={sandbox.previewUrl} 
-                          className="absolute inset-0 w-full h-full border-none z-10 bg-white" 
+                          src={sandbox.previewUrl}
+                          className="absolute inset-0 w-full h-full border-none z-10 bg-white"
                           title="Preview"
                         />
                       ) : (
@@ -427,7 +541,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                           >
                             <span className="flex items-center gap-2 font-medium lowercase">
                               {getFileIcon(selectedFile)}
-                              <span className="truncate max-w-[150px] font-semibold">{selectedFile ? selectedFile.split('/').pop() : 'select file'}</span>
+                              <span className="truncate max-w-[150px] font-semibold">{selectedFile ? selectedFile.split(/[/\\]/).pop() : 'select file'}</span>
                             </span>
                             <span className="material-symbols-outlined text-[13px] text-outline">unfold_more</span>
                           </button>
@@ -444,8 +558,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                               >
                                 {files
                                   .filter(path => {
-                                    const filename = path.split('/').pop().toLowerCase();
-                                    return filename !== 'dockerfile';
+                                    const filename = path.split(/[/\\]/).pop().toLowerCase();
+                                    return filename !== 'dockerfile' && filename !== '.dockerignore';
                                   })
                                   .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
                                   .map(path => {
@@ -457,11 +571,10 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                           if (onSelectFile) onSelectFile(path);
                                           setIsDropdownOpen(false);
                                         }}
-                                        className={`flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${
-                                          isSelected 
-                                            ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5' 
+                                        className={`flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${isSelected
+                                            ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5'
                                             : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
-                                        }`}
+                                          }`}
                                       >
                                         <div className="flex-shrink-0 flex items-center justify-center">
                                           {getFileIcon(path)}
@@ -502,9 +615,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                             theme="vs-dark"
                             language={
                               selectedFile.endsWith('.json') ? 'json' :
-                              selectedFile.endsWith('.css') ? 'css' :
-                              selectedFile.endsWith('.html') ? 'html' :
-                              'javascript'
+                                selectedFile.endsWith('.css') ? 'css' :
+                                  selectedFile.endsWith('.html') ? 'html' :
+                                    'javascript'
                             }
                             value={editorValue}
                             onChange={handleEditorChange}
@@ -531,12 +644,47 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                         </div>
                       )}
                     </div>
+
+                    {/* Preview Terminal (Below code showing area in 30% height) */}
+                    <AnimatePresence>
+                      {showPreviewTerminal && (
+                        <motion.div
+                          key="preview-terminal-panel"
+                          initial={{ height: 0 }}
+                          animate={{ height: '30%' }}
+                          exit={{ height: 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+                          className="border-t border-outline-variant/20 bg-[#141414] flex flex-col overflow-hidden relative"
+                        >
+                          <div className="flex items-center justify-between px-3 h-8 bg-[#181818] border-b border-[#252525] select-none">
+                            <span className="font-mono-data text-[10px] text-outline/80 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                              Terminal
+                            </span>
+                            <button
+                              onClick={() => setShowPreviewTerminal(false)}
+                              className="text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer flex items-center"
+                            >
+                              <span className="material-symbols-outlined text-[13px]">close</span>
+                            </button>
+                          </div>
+                          <div className="flex-1 min-h-0 relative bg-transparent p-2">
+                            <div ref={previewTerminalRef} className="absolute inset-2 overflow-hidden" />
+                            {!sandbox && (
+                              <div className="absolute inset-0 flex items-center justify-center text-outline font-code-sm bg-black/60 backdrop-blur-sm z-30">
+                                Connecting to terminal...
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               ) : (
-                <motion.div 
-                  animate={{ 
-                    width: viewMode === 'mobile' ? 'auto' : '100%', 
+                <motion.div
+                  animate={{
+                    width: viewMode === 'mobile' ? 'auto' : '100%',
                     height: viewMode === 'mobile' ? '100%' : '100%',
                     maxHeight: viewMode === 'mobile' ? 850 : '100%',
                     aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
@@ -546,7 +694,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full"
                 >
                   {/* Simulated Reload Overlay */}
-                  <motion.div 
+                  <motion.div
                     initial={false}
                     animate={{ opacity: isReloading ? 1 : 0 }}
                     transition={{ duration: 0.15 }}
@@ -555,10 +703,10 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
                   {activeTab === 'preview' ? (
                     sandbox?.previewUrl ? (
-                      <iframe 
+                      <iframe
                         key={iframeKey}
-                        src={sandbox.previewUrl} 
-                        className="absolute inset-0 w-full h-full border-none z-10 bg-white" 
+                        src={sandbox.previewUrl}
+                        className="absolute inset-0 w-full h-full border-none z-10 bg-white"
                         title="Preview"
                       />
                     ) : (
@@ -583,9 +731,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                             theme="vs-dark"
                             language={
                               selectedFile.endsWith('.json') ? 'json' :
-                              selectedFile.endsWith('.css') ? 'css' :
-                              selectedFile.endsWith('.html') ? 'html' :
-                              'javascript'
+                                selectedFile.endsWith('.css') ? 'css' :
+                                  selectedFile.endsWith('.html') ? 'html' :
+                                    'javascript'
                             }
                             value={editorValue}
                             onChange={handleEditorChange}
@@ -622,27 +770,24 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
         <VerticalResizeHandle />
 
         <Panel defaultSize={40} minSize={20}>
-          <motion.div 
+          <motion.div
             layout
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className={`w-full h-full bg-surface-container-lowest border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.6)] ${
-              maximizedPanel === 'terminal' 
-                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container-lowest rounded-none' 
+            className={`w-full h-full bg-surface-container-lowest border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.6)] ${maximizedPanel === 'terminal'
+                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container-lowest rounded-none'
                 : 'relative'
-            }`}
+              }`}
           >
             <header className="flex items-center px-4 py-2 bg-surface-container-lowest border-b border-outline-variant/35 z-10 justify-between select-none relative h-10">
               {/* Left: macOS Window traffic light controls */}
               <div className="flex items-center gap-1.5 z-20">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" title="Close" />
                 <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" title="Minimize" />
-                <div 
-                  onClick={() => setMaximizedPanel(maximizedPanel === 'terminal' ? null : 'terminal')}
-                  className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" 
-                  title="Toggle Fullscreen" 
+                <div
+                  className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-85 shadow-sm"
                 />
               </div>
-              
+
               {/* Center: Centered Session name (bash terminal style) */}
               <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none">
                 <div className="flex items-center gap-2 text-on-surface-variant/75 text-[11px] font-mono-data tracking-wide select-none">
@@ -660,7 +805,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
               {/* Right: macOS Utilities (Clear & Reconnect) */}
               <div className="flex items-center gap-1.5 z-20">
                 {/* Clear Terminal Display */}
-                <button 
+                <button
                   onClick={() => {
                     if (xtermRef.current) {
                       xtermRef.current.clear();
@@ -680,8 +825,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 </button>
 
                 {/* Terminal Reconnect Button */}
-                <button 
-                  onClick={handleReconnectTerminal} 
+                <button
+                  onClick={handleReconnectTerminal}
                   disabled={isTerminalReloading}
                   className="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface-variant hover:text-primary text-[10px] font-semibold font-label-caps cursor-pointer active:scale-95 shadow-sm disabled:opacity-40"
                   title="Reconnect Terminal Socket"
@@ -692,7 +837,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
                 {/* Close Button when maximized */}
                 {maximizedPanel === 'terminal' && (
-                  <button 
+                  <button
                     onClick={() => setMaximizedPanel(null)}
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface hover:text-primary active:scale-90 cursor-pointer shadow-sm ml-1"
                     title="Exit Fullscreen"
@@ -702,7 +847,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 )}
               </div>
             </header>
-            
+
             {/* The xterm container with original scanlines CRT styling */}
             <div className="flex-1 min-h-0 relative z-10 bg-transparent scanlines">
               <div ref={terminalRef} className="absolute inset-3 overflow-hidden" />
@@ -719,7 +864,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       {/* Global blurred glass background behind maximized overlays */}
       <AnimatePresence>
         {maximizedPanel && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

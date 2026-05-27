@@ -170,13 +170,13 @@ export const useHome = () => {
         }
     };
 
-    const sendAiMessage = async (message) => {
+    const sendAiMessage = async (message, agentNo = "1") => {
         if (!sandbox) return;
         setIsGenerating(true);
         setAiEvents([{ step: 'Initializing AI...', status: 'running', startTime: Date.now() }]);
         
         try {
-            await invokeAi(message, sandbox.sandboxId, (eventText) => {
+            await invokeAi(message, sandbox.sandboxId, agentNo, (eventText) => {
                 // Filter timestamps and connection events
                 if (eventText === 'Connection closed' || /^\d{2}:\d{2}:\d{2}\.\d{3}$/.test(eventText)) {
                     if (eventText === 'Connection closed') {

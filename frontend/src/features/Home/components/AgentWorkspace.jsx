@@ -1,7 +1,12 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
-import { Sparkles, Cpu } from 'lucide-react';
+import { Sparkles, Cpu, ChevronDown } from 'lucide-react';
+
+const models = [
+  { id: '1', name: 'Minimax', description: 'Fast & Creative', icon: '⚡' },
+  { id: '2', name: 'Mistral', description: 'Logical & Dense', icon: '🧠' }
+];
 
 function EventItem({ event, itemVariants }) {
   const [elapsed, setElapsed] = useState(0);
@@ -73,6 +78,8 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
   const [currentPrompt, setCurrentPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState('1');
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const lenis = new Lenis({
@@ -106,7 +113,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
     if (!inputValue.trim() || isGenerating) return;
     const msg = inputValue.trim();
     setCurrentPrompt(msg);
-    sendAiMessage(msg);
+    sendAiMessage(msg, selectedModel);
     setInputValue('');
   };
 
@@ -209,10 +216,72 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
       </div>
 
       {/* Input Form at the bottom */}
-      <div className="px-4 pb-5 pt-2 mt-auto">
-        <form onSubmit={handleSend} className="relative flex items-center bg-surface-container-low border border-outline-variant/35 rounded-md p-1 shadow-inner focus-within:border-outline/50 transition-all duration-300">
+      <div className="px-4 pb-5 pt-2 mt-auto relative">
+        {/* Transparent Click-out overlay */}
+        {isOpen && (
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setIsOpen(false)} 
+          />
+        )}
+        
+        <form onSubmit={handleSend} className="relative flex items-center bg-surface-container-low border border-outline-variant/35 rounded-md p-1.5 shadow-inner focus-within:border-outline/50 transition-all duration-300 gap-1.5">
+          {/* Custom Dropdown Container */}
+          <div className="relative z-50 flex items-center pl-1">
+            <button
+              type="button"
+              disabled={isGenerating}
+              onClick={() => setIsOpen(!isOpen)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-container-high/80 border border-outline-variant/30 hover:border-outline-variant/60 text-on-surface-variant hover:text-on-surface transition-all duration-200 cursor-pointer disabled:opacity-50"
+            >
+              <span className="text-[12px]">{models.find(m => m.id === selectedModel)?.icon}</span>
+              <span className="text-[11px] font-bold tracking-tight">{models.find(m => m.id === selectedModel)?.name}</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-outline transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu floating upwards */}
+            {isOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute bottom-full left-0 mb-2 w-56 bg-surface-container-high/95 backdrop-blur-xl border border-outline-variant/40 rounded-lg p-1 shadow-2xl flex flex-col gap-0.5"
+              >
+                <div className="px-2 py-1.5 text-[9px] font-bold text-outline uppercase tracking-wider select-none opacity-80">
+                  Select AI Model
+                </div>
+                {models.map((model) => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedModel(model.id);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded text-left transition-all duration-200 hover:bg-primary/10 group ${
+                      selectedModel === model.id ? 'bg-primary/15 border border-primary/20' : 'border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px]">{model.icon}</span>
+                      <div className="flex flex-col">
+                        <span className={`text-[11px] font-bold tracking-tight ${selectedModel === model.id ? 'text-primary' : 'text-on-surface'}`}>
+                          {model.name}
+                        </span>
+                        <span className="text-[9px] text-outline leading-tight">{model.description}</span>
+                      </div>
+                    </div>
+                    {selectedModel === model.id && (
+                      <span className="material-symbols-outlined text-[14px] text-primary font-bold">check</span>
+                    )}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </div>
+
           <input 
-            className="w-full bg-transparent py-2 pl-3 pr-10 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none disabled:opacity-50" 
+            className="w-full bg-transparent py-2 pl-2 pr-10 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none disabled:opacity-50" 
             placeholder={isGenerating ? "AI is generating code..." : "Interrupt or refine..."}
             type="text"
             value={inputValue}

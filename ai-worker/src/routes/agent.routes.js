@@ -1,15 +1,17 @@
 import express from "express";
-import { agent } from "../agents/agent.code.js";
+import { agent1, agent2 } from "../agents/agent.code.js";
 const router = express.Router();
 
 router.post("/invoke", async (req, res) => {
-    const { message, projectId } = req.body
+    const { message, projectId, agentNo } = req.body
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive'
     });
     try {
+        const agent = agentNo == 1 ? agent1 : agent2;
+
         const response = await agent.stream({
             messages: [{
                 role: "user",
