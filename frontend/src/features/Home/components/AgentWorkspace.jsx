@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Cpu } from 'lucide-react';
 
 function EventItem({ event, itemVariants }) {
   const [elapsed, setElapsed] = useState(0);
@@ -22,43 +22,46 @@ function EventItem({ event, itemVariants }) {
 
   if (isError) {
     return (
-      <motion.div variants={itemVariants} className="bg-error/5 border border-error/30 rounded-lg p-3 flex flex-col gap-2 relative overflow-hidden shadow-[inset_0_0_20px_rgba(239,68,68,0.05)]">
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-error">
-            <span className="material-symbols-outlined text-[16px]">error</span>
-            <span className="font-label-caps text-label-caps font-bold">{event.step}</span>
-          </div>
-          <span className="font-code-md text-[10px] text-error">Failed</span>
+      <motion.div 
+        variants={itemVariants} 
+        className="bg-error-container/5 border border-error-container/20 rounded px-2.5 py-1 flex items-center justify-between shadow-sm relative overflow-hidden"
+      >
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-error"></div>
+        <div className="flex items-center gap-2 text-error">
+          <span className="material-symbols-outlined text-[12px] font-medium">error</span>
+          <span className="font-mono-data text-[11px] font-medium tracking-tight truncate max-w-[200px]" title={event.step}>{event.step}</span>
         </div>
+        <span className="font-mono-data text-[9px] text-error bg-error/10 px-1 py-0.5 rounded leading-none">Failed</span>
       </motion.div>
     );
   }
 
   if (event.status === 'completed') {
     return (
-      <motion.div variants={itemVariants} className="bg-surface-container-low border border-outline-variant/20 rounded-lg p-3 flex flex-col gap-2 transition-all duration-300">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-on-surface-variant">
-            <span className="material-symbols-outlined text-tertiary text-[16px]">check_circle</span>
-            <span className="font-label-caps text-label-caps text-on-surface">{event.step}</span>
-          </div>
-          <span className="font-code-md text-[10px] text-outline">{displayTime}s</span>
+      <motion.div 
+        variants={itemVariants} 
+        className="flex items-center justify-between py-1 px-2.5 hover:bg-surface-container-low/50 rounded transition-all duration-300 select-none"
+      >
+        <div className="flex items-center gap-2 text-on-surface-variant/80">
+          <span className="material-symbols-outlined text-primary/70 text-[12px] font-bold">check</span>
+          <span className="font-mono-data text-[11px] text-on-surface-variant truncate max-w-[200px]" title={event.step}>{event.step}</span>
         </div>
+        <span className="font-mono-data text-[10px] text-on-surface-variant/40">{displayTime}s</span>
       </motion.div>
     );
   }
 
   return (
-    <motion.div variants={itemVariants} className="bg-primary/5 border border-primary/30 rounded-lg p-3 flex flex-col gap-3 relative overflow-hidden shadow-[inset_0_0_20px_rgba(79,70,229,0.05)]">
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-primary">
-          <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-          <span className="font-label-caps text-label-caps font-bold">{event.step}</span>
-        </div>
-        <span className="font-code-md text-[10px] text-primary">{displayTime}s</span>
+    <motion.div 
+      variants={itemVariants} 
+      className="bg-surface-container-low border border-outline-variant/30 rounded px-2.5 py-1 flex items-center justify-between shadow-sm relative overflow-hidden"
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary"></div>
+      <div className="flex items-center gap-2 text-primary">
+        <span className="material-symbols-outlined animate-spin text-[12px]">progress_activity</span>
+        <span className="font-mono-data text-[11px] font-medium tracking-tight truncate max-w-[200px]" title={event.step}>{event.step}</span>
       </div>
+      <span className="font-mono-data text-[10px] text-primary/80 animate-pulse">{displayTime}s</span>
     </motion.div>
   );
 }
@@ -125,16 +128,16 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
       initial={{ x: 50, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full flex flex-col gap-3 h-full bg-surface/70 backdrop-blur-md border border-outline-variant/20 rounded-2xl overflow-hidden shadow-lg relative z-10"
+      className="w-full flex flex-col gap-3 h-full bg-surface-container/70 backdrop-blur-md border border-outline-variant/35 rounded-xl overflow-hidden shadow-lg relative z-10"
     >
       <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary-container to-transparent opacity-50"></div>
-      <header className="px-5 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low/50">
+      <header className="px-5 py-4 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-lowest">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-white animate-pulse" />
           <h2 className="font-display-lg text-[14px] font-bold text-white tracking-wide">Forge Engine</h2>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-highest border border-outline-variant/30">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-high border border-outline-variant/40">
             {isGenerating ? (
               <>
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
@@ -142,8 +145,8 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
               </>
             ) : (
               <>
-                <div className="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-                <span className="font-label-caps text-[10px] text-tertiary">READY</span>
+                <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                <span className="font-label-caps text-[10px] text-on-surface-variant">READY</span>
               </>
             )}
           </div>
@@ -156,12 +159,12 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
           {/* User Prompt Bubble */}
           {currentPrompt && (
             <div className="flex gap-3 items-start self-end max-w-[90%]">
-              <div className="bg-surface-variant text-on-surface p-3 rounded-lg rounded-tr-sm border border-outline-variant/20 shadow-sm">
+              <div className="bg-surface-container-high text-on-surface p-3 rounded-md rounded-tr-sm border border-outline-variant/20 shadow-sm">
                 <p className="font-body-sm text-body-sm">{currentPrompt}</p>
               </div>
               <img 
                 alt="User" 
-                className="w-6 h-6 rounded-full" 
+                className="w-6 h-6 rounded-full border border-outline-variant/45 shadow-sm" 
                 data-alt="Small circular user avatar placeholder." 
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpIhIn2PcWxPLZx-NrMtMnoV7hYWIt9Ru1GZ0hBB5BuKkKPMRvJweKino3x4kNxfrM5zzWa4yKzJC6S3BO6ayNaYP5FQFm9aqd0GjoDePzF9XCzpfO4UYJQkwOkSVoc3dIH3QXMwG2KrvO46QyjOJl7MnU7mCdqBiOS1wzBN-Q9j8D42tuzy1DNZkx6P3Ra87VMuDdpy5KFAb0mrL2Wo5G3ASnJkxK3BtARV5vtGQTnfHvMpc4wupS4kOmE4Dg2YYBCB8CLRepSe-p"
               />
@@ -174,12 +177,12 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
               variants={containerVariants} 
               initial="hidden" 
               animate="show" 
-              key={aiEvents.length} 
-              className="flex flex-col gap-3 w-full"
+              key="ai-event-list" 
+              className="flex flex-col gap-2.5 w-full"
             >
-              <motion.div variants={itemVariants} className="flex items-center gap-2 mb-1">
-                <span className="material-symbols-outlined text-primary text-[16px]">cycle</span>
-                <span className="font-label-caps text-label-caps text-primary uppercase tracking-wider">Agent Plan Executing</span>
+              <motion.div variants={itemVariants} className="flex items-center gap-1.5 mb-1.5 select-none">
+                <Cpu className="w-3.5 h-3.5 text-primary/80 animate-pulse" />
+                <span className="font-label-caps text-[9px] text-primary uppercase tracking-widest font-semibold opacity-90">Agent Plan Executing</span>
               </motion.div>
               {aiEvents.map((event, index) => (
                 <EventItem 
@@ -190,7 +193,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
               ))}
             </motion.div>
           ) : (
-            <div className="text-center py-10 flex flex-col items-center justify-center gap-4 border border-dashed border-outline-variant/20 rounded-xl bg-surface-container-lowest/30 p-6">
+            <div className="text-center py-10 flex flex-col items-center justify-center gap-4 border border-dashed border-outline-variant/45 rounded-md bg-surface-container-lowest/30 p-6">
               <span className="material-symbols-outlined text-[48px] text-outline opacity-40 animate-pulse">rocket_launch</span>
               <div className="flex flex-col gap-1">
                 <p className="font-body-md text-on-surface/80 font-medium">Ready to start designing</p>
@@ -207,7 +210,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
 
       {/* Input Form at the bottom */}
       <div className="px-4 pb-5 pt-2 mt-auto">
-        <form onSubmit={handleSend} className="relative flex items-center bg-surface-container-highest border border-outline-variant/20 rounded-xl p-1 shadow-inner focus-within:border-primary/50 transition-all duration-300">
+        <form onSubmit={handleSend} className="relative flex items-center bg-surface-container-low border border-outline-variant/35 rounded-md p-1 shadow-inner focus-within:border-outline/50 transition-all duration-300">
           <input 
             className="w-full bg-transparent py-2 pl-3 pr-10 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none disabled:opacity-50" 
             placeholder={isGenerating ? "AI is generating code..." : "Interrupt or refine..."}
@@ -218,7 +221,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
           />
           <button 
             type="submit"
-            className="absolute right-2 p-1.5 rounded-lg text-outline hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            className="absolute right-2 p-1.5 rounded-md text-outline hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
             disabled={isGenerating || !inputValue.trim()}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>send</span>

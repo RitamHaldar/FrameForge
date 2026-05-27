@@ -1,10 +1,11 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import Editor from '@monaco-editor/react';
+import { FileCode2, FileJson, FileImage, FileText, File } from 'lucide-react';
 
 const VerticalResizeHandle = () => (
   <PanelResizeHandle className="h-3 group flex items-center justify-center cursor-row-resize outline-none z-20">
@@ -12,7 +13,31 @@ const VerticalResizeHandle = () => (
   </PanelResizeHandle>
 );
 
-export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile }) {
+const getFileIcon = (filename) => {
+  if (!filename) return <File className="w-3.5 h-3.5 text-outline/50" />;
+  const name = filename.toLowerCase();
+  if (name.endsWith('.jsx') || name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.tsx')) {
+    return <FileCode2 className="w-3.5 h-3.5 text-[#ffbd2e]" />; // warm gold for JS/TS
+  }
+  if (name.endsWith('.json')) {
+    return <FileJson className="w-3.5 h-3.5 text-[#27c93f]" />; // bright green for JSON
+  }
+  if (name.endsWith('.css')) {
+    return <FileCode2 className="w-3.5 h-3.5 text-[#2d9cdb]" />; // blue for CSS
+  }
+  if (name.endsWith('.html')) {
+    return <FileCode2 className="w-3.5 h-3.5 text-[#ff5f56]" />; // red-orange for HTML
+  }
+  if (name.match(/\.(png|jpe?g|svg|gif|webp)$/)) {
+    return <FileImage className="w-3.5 h-3.5 text-[#a1a1aa]" />; // silver for images
+  }
+  if (name.endsWith('.md') || name.endsWith('.txt')) {
+    return <FileText className="w-3.5 h-3.5 text-[#bbbbbb]" />;
+  }
+  return <File className="w-3.5 h-3.5 text-outline/40" />;
+};
+
+export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const [viewMode, setViewMode] = useState('pc');
@@ -20,6 +45,18 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const [isReloading, setIsReloading] = useState(false);
   const [isTerminalReloading, setIsTerminalReloading] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // States for active file code editing
   const [editorValue, setEditorValue] = useState('');
@@ -167,235 +204,502 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       initial={{ scale: 0.98, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      style={{ transform: maximizedPanel ? 'none' : undefined }}
       className="flex-1 h-full overflow-hidden z-10 relative"
     >
       <PanelGroup orientation="vertical">
         <Panel defaultSize={60} minSize={30}>
-          <div className="w-full h-full bg-surface/70 backdrop-blur-md border border-outline-variant/20 rounded-2xl flex flex-col overflow-hidden shadow-lg relative">
-             <header className="flex items-center justify-between px-4 py-2.5 bg-[#0d0d11] border-b border-white/5 z-20 select-none">
+          <motion.div 
+            layout
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
+            className={`w-full h-full bg-surface-container/70 backdrop-blur-md border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-lg ${
+              maximizedPanel === 'preview' 
+                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container rounded-none' 
+                : 'relative'
+            }`}
+          >
+             <header className="flex items-center justify-between px-4 py-1.5 bg-surface-container-lowest border-b border-outline-variant/25 z-20 select-none h-11">
               {/* Left: macOS Window Traffic Lights & Navigation Controls */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3.5 z-20">
                 <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[#ff5f56] opacity-90 shadow-sm" />
-                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e] opacity-90 shadow-sm" />
-                  <div className="w-3 h-3 rounded-full bg-[#27c93f] opacity-90 shadow-sm" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" />
+                  <div 
+                    onClick={() => setMaximizedPanel(maximizedPanel === 'preview' ? null : 'preview')}
+                    className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" 
+                    title="Toggle Fullscreen"
+                  />
                 </div>
                 
                 {/* Safari style Back/Forward arrows */}
-                <div className="hidden sm:flex items-center gap-1 text-outline/40">
-                  <span className="material-symbols-outlined text-[18px] cursor-not-allowed">chevron_left</span>
-                  <span className="material-symbols-outlined text-[18px] cursor-not-allowed">chevron_right</span>
+                <div className="hidden sm:flex items-center gap-0.5 text-on-surface-variant/40">
+                  <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-low hover:text-on-surface transition-all cursor-not-allowed">
+                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
+                  </button>
+                  <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-low hover:text-on-surface transition-all cursor-not-allowed">
+                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+                  </button>
                 </div>
               </div>
 
               {/* Center: Safari Unified Smart Address Bar */}
-              <div className="flex-1 max-w-[400px] min-w-[120px] mx-4 relative">
-                <div className="flex items-center justify-between bg-white/5 hover:bg-white/10 border border-white/5 focus-within:border-white/15 transition-all rounded-lg px-3 py-1 text-center group">
-                  <div className="flex items-center gap-1.5 text-outline/65 text-center mx-auto truncate max-w-full">
-                    <span className="material-symbols-outlined text-[13px] text-[#a1a1aa]">lock</span>
-                    <span className="font-body-sm text-[11px] text-[#e4e4e7] tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
+              <div className="flex-1 max-w-[360px] min-w-[120px] mx-4 relative z-20">
+                <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
+                  <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
+                    <span className="material-symbols-outlined text-[11px]">lock</span>
+                    <span className="font-mono-data text-[11px] text-on-surface tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
                       {sandbox?.previewUrl ? new URL(sandbox.previewUrl).host : 'Loading sandbox...'}
                     </span>
                   </div>
                   <button 
                     onClick={handleReload} 
-                    className="flex items-center text-outline/60 hover:text-white transition-colors cursor-pointer"
+                    className="flex items-center text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer"
                     title="Reload Page"
                   >
-                    <span className={`material-symbols-outlined text-[14px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
+                    <span className={`material-symbols-outlined text-[12px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
                   </button>
                 </div>
               </div>
 
               {/* Right: Tab Mode, View Controls & active file tag */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 z-20">
                 {/* PC/Mobile switchers */}
-                <div className="flex bg-white/5 rounded-lg border border-white/5 overflow-hidden p-0.5">
+                <div className="flex bg-surface-container rounded-md border border-outline-variant/20 overflow-hidden p-0.5 h-7">
                   <button 
                     onClick={() => setViewMode('pc')} 
-                    className={`px-2 py-1 rounded-md transition-all flex items-center ${viewMode === 'pc' ? 'bg-white/10 text-white shadow-sm' : 'text-outline/60 hover:text-white'}`}
+                    className={`px-2 rounded transition-all flex items-center h-full ${viewMode === 'pc' ? 'bg-surface-container-high text-primary shadow-sm border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
                     title="Desktop View"
                   >
-                    <span className="material-symbols-outlined text-[14px]">desktop_windows</span>
+                    <span className="material-symbols-outlined text-[13px]">desktop_windows</span>
                   </button>
                   <button 
                     onClick={() => setViewMode('mobile')} 
-                    className={`px-2 py-1 rounded-md transition-all flex items-center ${viewMode === 'mobile' ? 'bg-white/10 text-white shadow-sm' : 'text-outline/60 hover:text-white'}`}
+                    className={`px-2 rounded transition-all flex items-center h-full ${viewMode === 'mobile' ? 'bg-surface-container-high text-primary shadow-sm border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
                     title="Mobile View"
                   >
-                    <span className="material-symbols-outlined text-[14px]">smartphone</span>
+                    <span className="material-symbols-outlined text-[13px]">smartphone</span>
                   </button>
                 </div>
 
-                {/* Tab Switchers (Preview / Code) */}
-                <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/5">
-                  <button 
-                    onClick={() => setActiveTab('preview')}
-                    className={`px-3 py-1 rounded-md font-label-caps text-[11px] tracking-wider transition-all flex items-center gap-1.5 ${activeTab === 'preview' ? 'bg-white text-black font-bold shadow-md' : 'text-outline/70 hover:text-white'}`}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">visibility</span>
-                    Preview
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('code')}
-                    className={`px-3 py-1 rounded-md font-label-caps text-[11px] tracking-wider transition-all flex items-center gap-1.5 ${activeTab === 'code' ? 'bg-white text-black font-bold shadow-md' : 'text-outline/70 hover:text-white'}`}
-                  >
-                    <span className="material-symbols-outlined text-[14px]">code</span>
-                    Code
-                  </button>
+                {/* Tab Switchers (Preview / Code) or Save Option in enlarged modal */}
+                {maximizedPanel === 'preview' ? (
+                  selectedFile && (
+                    <div className="flex items-center gap-1.5 bg-surface-container px-2 py-0.5 rounded-md border border-outline-variant/20 h-7">
+                      <div className="flex items-center bg-surface-container-lowest px-2 py-0.5 rounded border border-outline-variant/25 font-label-caps text-[9px] text-on-surface gap-1.5 h-5.5">
+                        <span className="material-symbols-outlined text-outline text-[11px]">javascript</span>
+                        <span className="truncate max-w-[80px] font-semibold lowercase">{selectedFile.split('/').pop()}</span>
+                      </div>
+                      <button
+                        onClick={handleSave}
+                        disabled={!isDirty || isSaving}
+                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded transition-all font-bold font-mono-data text-[9px] h-5.5 active:scale-95 border ${
+                          isDirty
+                            ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
+                            : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
+                        }`}
+                        title="Save File (Ctrl+S)"
+                      >
+                        <span className={`material-symbols-outlined text-[11px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
+                        {isSaving ? 'Saving' : 'Save'}
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex bg-surface-container rounded-md p-0.5 border border-outline-variant/20 h-7">
+                    <button 
+                      onClick={() => setActiveTab('preview')}
+                      className={`px-2.5 rounded font-label-caps text-[10px] tracking-wider transition-all flex items-center gap-1.5 h-full ${activeTab === 'preview' ? 'bg-surface-container-high text-primary font-bold shadow-md border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><rect width="20" height="20" x="2" y="2" rx="2"/><path d="M2 10h20"/><circle cx="6" cy="6" r="0.75"/></svg>
+                      Preview
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('code')}
+                      className={`px-2.5 rounded font-label-caps text-[10px] tracking-wider transition-all flex items-center gap-1.5 h-full ${activeTab === 'code' ? 'bg-surface-container-high text-primary font-bold shadow-md border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                      Code
+                    </button>
+                  </div>
+                )}
+
+                {/* Apple Share Button (Visual Premium detail) */}
+                <div 
+                  className="w-7 h-7 flex items-center justify-center hover:bg-surface-container rounded-md text-on-surface-variant hover:text-primary transition-all cursor-pointer border border-transparent hover:border-outline-variant/20"
+                  title="Share Preview URL"
+                  onClick={() => {
+                    if (sandbox?.previewUrl) {
+                      navigator.clipboard.writeText(sandbox.previewUrl);
+                      alert('Copied sandbox preview URL to clipboard!');
+                    }
+                  }}
+                >
+                  <span className="material-symbols-outlined text-[14px]">ios_share</span>
                 </div>
 
-                {/* File context & save button if code tab is open */}
-                {selectedFile && activeTab === 'code' && (
-                  <div className="flex items-center gap-1.5 ml-1.5">
-                    <div className="flex items-center bg-white/5 px-2.5 py-1.5 rounded-lg border border-white/5 font-label-caps text-[10px] text-[#e4e4e7] gap-1.5">
-                      <span className="material-symbols-outlined text-outline text-[13px]">javascript</span>
+                {/* File context & save button if code tab is open and NOT maximized */}
+                {selectedFile && activeTab === 'code' && maximizedPanel !== 'preview' && (
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <div className="flex items-center bg-surface-container px-2.5 py-1 rounded-md border border-outline-variant/25 font-label-caps text-[9px] text-on-surface gap-1.5 h-7">
+                      <span className="material-symbols-outlined text-outline text-[12px]">javascript</span>
                       <span className="truncate max-w-[80px]">{selectedFile.split('/').pop()}</span>
                     </div>
                     <button
                       onClick={handleSave}
                       disabled={!isDirty || isSaving}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all font-bold font-code-md text-[10px] active:scale-95 ${
+                      className={`flex items-center gap-1 px-3 py-1 rounded-md transition-all font-bold font-mono-data text-[9px] h-7 active:scale-95 border ${
                         isDirty
-                          ? 'bg-white text-black hover:bg-white/95 cursor-pointer shadow-md'
-                          : 'bg-white/5 text-[#a1a1aa]/40 cursor-not-allowed border border-white/5 shadow-none'
+                          ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
+                          : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
                       }`}
                       title="Save File (Ctrl+S)"
                     >
-                      <span className={`material-symbols-outlined text-[13px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
-                      {isSaving ? 'Saving...' : 'Save'}
+                      <span className={`material-symbols-outlined text-[12px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
+                      {isSaving ? 'Saving' : 'Save'}
                     </button>
                   </div>
+                )}
+
+                {/* Apple Revert Maximize button */}
+                {maximizedPanel === 'preview' && (
+                  <button 
+                    onClick={() => setMaximizedPanel(null)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface hover:text-primary active:scale-90 cursor-pointer shadow-sm ml-1"
+                    title="Exit Fullscreen"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">close</span>
+                  </button>
                 )}
               </div>
             </header>
             <div className="flex-1 bg-black relative overflow-hidden flex items-center justify-center p-4">
-              <motion.div 
-                animate={{ 
-                  width: viewMode === 'mobile' ? 'auto' : '100%', 
-                  height: viewMode === 'mobile' ? '100%' : '100%',
-                  maxHeight: viewMode === 'mobile' ? 850 : '100%',
-                  aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
-                  borderRadius: viewMode === 'mobile' ? 40 : 8
-                }}
-                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full"
-              >
-                {/* Simulated Reload Overlay */}
-                <motion.div 
-                  initial={false}
-                  animate={{ opacity: isReloading ? 1 : 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute inset-0 bg-black z-30 pointer-events-none"
-                />
+              {maximizedPanel === 'preview' ? (
+                <div className="flex flex-col md:flex-row w-full h-full gap-4">
+                  {/* Left Column: Live Preview Frame */}
+                  <div className="flex-1 h-full flex items-center justify-center relative bg-black min-w-0">
+                    <motion.div 
+                      animate={{ 
+                        width: viewMode === 'mobile' ? 'auto' : '100%', 
+                        height: viewMode === 'mobile' ? '100%' : '100%',
+                        maxHeight: viewMode === 'mobile' ? 850 : '100%',
+                        aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
+                        borderRadius: viewMode === 'mobile' ? 40 : 8
+                      }}
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full w-full h-full"
+                    >
+                      {/* Simulated Reload Overlay */}
+                      <motion.div 
+                        initial={false}
+                        animate={{ opacity: isReloading ? 1 : 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute inset-0 bg-black z-30 pointer-events-none"
+                      />
 
-                {activeTab === 'preview' ? (
-                  sandbox?.previewUrl ? (
-                    <iframe 
-                      key={iframeKey}
-                      src={sandbox.previewUrl} 
-                      className="absolute inset-0 w-full h-full border-none z-10 bg-white" 
-                      title="Preview"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center z-10 bg-surface-dim">
-                      <div className="flex flex-col items-center gap-4">
-                        <span className="material-symbols-outlined animate-spin text-[40px] text-primary">progress_activity</span>
-                        <span className="font-label-caps text-outline">Starting Sandbox Environment...</span>
+                      {sandbox?.previewUrl ? (
+                        <iframe 
+                          key={iframeKey}
+                          src={sandbox.previewUrl} 
+                          className="absolute inset-0 w-full h-full border-none z-10 bg-white" 
+                          title="Preview"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center z-10 bg-surface-dim">
+                          <div className="flex flex-col items-center gap-4">
+                            <span className="material-symbols-outlined animate-spin text-[40px] text-primary">progress_activity</span>
+                            <span className="font-label-caps text-outline">Starting Sandbox Environment...</span>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </div>
+
+                  {/* Right Column: Code Editor */}
+                  <div className="flex-1 h-full flex flex-col border border-outline-variant/20 rounded-lg overflow-hidden bg-[#1e1e1e] min-w-0">
+                    {/* Monaco Editor Header / Toolbar */}
+                    <div className="flex items-center justify-between px-3 h-9 bg-[#181818] border-b border-outline-variant/20 select-none">
+                      <div className="flex items-center gap-2">
+                        {/* Custom Dropdown for File Picker */}
+                        <div className="relative" ref={dropdownRef}>
+                          <button
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#202020] hover:bg-[#282828] border border-outline-variant/20 transition-all text-on-surface text-[11px] font-mono-data cursor-pointer select-none active:scale-95 shadow-sm"
+                          >
+                            <span className="flex items-center gap-2 font-medium lowercase">
+                              {getFileIcon(selectedFile)}
+                              <span className="truncate max-w-[150px] font-semibold">{selectedFile ? selectedFile.split('/').pop() : 'select file'}</span>
+                            </span>
+                            <span className="material-symbols-outlined text-[13px] text-outline">unfold_more</span>
+                          </button>
+
+                          {/* Dropdown Menu Overlay */}
+                          <AnimatePresence>
+                            {isDropdownOpen && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                                transition={{ duration: 0.15, ease: "easeOut" }}
+                                className="absolute left-0 mt-1.5 w-64 max-h-72 overflow-y-auto bg-[#181818]/95 border border-outline-variant/35 rounded-md shadow-2xl z-40 py-1 backdrop-blur-lg scrollbar-thin select-none"
+                              >
+                                {files
+                                  .filter(path => {
+                                    const filename = path.split('/').pop().toLowerCase();
+                                    return filename !== 'dockerfile';
+                                  })
+                                  .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
+                                  .map(path => {
+                                    const isSelected = selectedFile === path;
+                                    return (
+                                      <div
+                                        key={path}
+                                        onClick={() => {
+                                          if (onSelectFile) onSelectFile(path);
+                                          setIsDropdownOpen(false);
+                                        }}
+                                        className={`flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${
+                                          isSelected 
+                                            ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5' 
+                                            : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
+                                        }`}
+                                      >
+                                        <div className="flex-shrink-0 flex items-center justify-center">
+                                          {getFileIcon(path)}
+                                        </div>
+                                        <span className="truncate flex-1 text-left">{path}</span>
+                                        {isSelected && (
+                                          <span className="material-symbols-outlined text-[12px] text-primary">check</span>
+                                        )}
+                                      </div>
+                                    );
+                                  })
+                                }
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedFile && (
+                          <span className="font-mono-data text-[9px] text-outline/50 uppercase tracking-widest">
+                            {selectedFile.split('.').pop() || 'text'}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )
-                ) : (
-                  <div className="absolute inset-0 w-full h-full z-10 bg-[#1e1e1e] flex flex-col">
-                    {isLoadingFile ? (
-                      <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline">
-                        <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
-                        <span className="font-label-caps text-[12px]">Loading file content...</span>
-                      </div>
-                    ) : selectedFile ? (
-                      <div className="flex-1 w-full h-full relative overflow-hidden">
-                        <Editor
-                          height="100%"
-                          theme="vs-dark"
-                          language={
-                            selectedFile.endsWith('.json') ? 'json' :
-                            selectedFile.endsWith('.css') ? 'css' :
-                            selectedFile.endsWith('.html') ? 'html' :
-                            'javascript'
-                          }
-                          value={editorValue}
-                          onChange={handleEditorChange}
-                          onMount={handleEditorDidMount}
-                          options={{
-                            readOnly: false,
-                            minimap: { enabled: true },
-                            fontSize: 13,
-                            fontFamily: '"JetBrains Mono", monospace',
-                            scrollbar: {
-                              vertical: 'hidden',
-                              horizontal: 'hidden',
-                              verticalScrollbarSize: 0,
-                              horizontalScrollbarSize: 0,
-                              handleMouseWheel: true
+
+                    {/* Monaco Editor Content */}
+                    <div className="flex-1 min-h-0 relative bg-[#1e1e1e]">
+                      {isLoadingFile ? (
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline">
+                          <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
+                          <span className="font-label-caps text-[12px]">Loading file content...</span>
+                        </div>
+                      ) : selectedFile ? (
+                        <div className="flex-1 w-full h-full relative overflow-hidden">
+                          <Editor
+                            height="100%"
+                            theme="vs-dark"
+                            language={
+                              selectedFile.endsWith('.json') ? 'json' :
+                              selectedFile.endsWith('.css') ? 'css' :
+                              selectedFile.endsWith('.html') ? 'html' :
+                              'javascript'
                             }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline/50">
-                        <span className="material-symbols-outlined text-[40px]">description</span>
-                        <span className="font-label-caps text-[12px]">Select a file from the explorer to view code</span>
-                      </div>
-                    )}
+                            value={editorValue}
+                            onChange={handleEditorChange}
+                            onMount={handleEditorDidMount}
+                            options={{
+                              readOnly: false,
+                              minimap: { enabled: true },
+                              fontSize: 13,
+                              fontFamily: '"JetBrains Mono", monospace',
+                              scrollbar: {
+                                vertical: 'hidden',
+                                horizontal: 'hidden',
+                                verticalScrollbarSize: 0,
+                                horizontalScrollbarSize: 0,
+                                handleMouseWheel: true
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline/50">
+                          <span className="material-symbols-outlined text-[40px]">description</span>
+                          <span className="font-label-caps text-[12px]">Select a file from the explorer to view code</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </motion.div>
+                </div>
+              ) : (
+                <motion.div 
+                  animate={{ 
+                    width: viewMode === 'mobile' ? 'auto' : '100%', 
+                    height: viewMode === 'mobile' ? '100%' : '100%',
+                    maxHeight: viewMode === 'mobile' ? 850 : '100%',
+                    aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
+                    borderRadius: viewMode === 'mobile' ? 40 : 8
+                  }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full"
+                >
+                  {/* Simulated Reload Overlay */}
+                  <motion.div 
+                    initial={false}
+                    animate={{ opacity: isReloading ? 1 : 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute inset-0 bg-black z-30 pointer-events-none"
+                  />
+
+                  {activeTab === 'preview' ? (
+                    sandbox?.previewUrl ? (
+                      <iframe 
+                        key={iframeKey}
+                        src={sandbox.previewUrl} 
+                        className="absolute inset-0 w-full h-full border-none z-10 bg-white" 
+                        title="Preview"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-surface-dim">
+                        <div className="flex flex-col items-center gap-4">
+                          <span className="material-symbols-outlined animate-spin text-[40px] text-primary">progress_activity</span>
+                          <span className="font-label-caps text-outline">Starting Sandbox Environment...</span>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="absolute inset-0 w-full h-full z-10 bg-[#1e1e1e] flex flex-col">
+                      {isLoadingFile ? (
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline">
+                          <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
+                          <span className="font-label-caps text-[12px]">Loading file content...</span>
+                        </div>
+                      ) : selectedFile ? (
+                        <div className="flex-1 w-full h-full relative overflow-hidden">
+                          <Editor
+                            height="100%"
+                            theme="vs-dark"
+                            language={
+                              selectedFile.endsWith('.json') ? 'json' :
+                              selectedFile.endsWith('.css') ? 'css' :
+                              selectedFile.endsWith('.html') ? 'html' :
+                              'javascript'
+                            }
+                            value={editorValue}
+                            onChange={handleEditorChange}
+                            onMount={handleEditorDidMount}
+                            options={{
+                              readOnly: false,
+                              minimap: { enabled: true },
+                              fontSize: 13,
+                              fontFamily: '"JetBrains Mono", monospace',
+                              scrollbar: {
+                                vertical: 'hidden',
+                                horizontal: 'hidden',
+                                verticalScrollbarSize: 0,
+                                horizontalScrollbarSize: 0,
+                                handleMouseWheel: true
+                              }
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline/50">
+                          <span className="material-symbols-outlined text-[40px]">description</span>
+                          <span className="font-label-caps text-[12px]">Select a file from the explorer to view code</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              )}
             </div>
-          </div>
+          </motion.div>
         </Panel>
 
         <VerticalResizeHandle />
 
         <Panel defaultSize={40} minSize={20}>
-          <div className="w-full h-full bg-gradient-to-b from-[#0b0b12] to-[#040407] border border-white/5 rounded-2xl flex flex-col overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.6)] relative">
-            <header className="flex items-center px-4 py-3 bg-[#101018]/95 backdrop-blur-md border-b border-white/5 z-10 justify-between select-none shadow-sm">
-              <div className="flex items-center gap-2">
-                {/* Status Beacon */}
-                <div className="relative flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white absolute animate-ping opacity-75"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]"></span>
-                </div>
-                <span className="material-symbols-outlined text-outline/80 text-[15px]">terminal</span>
-                <span className="font-label-caps text-[9px] text-[#e4e1ee] tracking-[0.2em] font-bold">TERMINAL</span>
+          <motion.div 
+            layout
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
+            className={`w-full h-full bg-surface-container-lowest border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.6)] ${
+              maximizedPanel === 'terminal' 
+                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container-lowest rounded-none' 
+                : 'relative'
+            }`}
+          >
+            <header className="flex items-center px-4 py-2 bg-surface-container-lowest border-b border-outline-variant/35 z-10 justify-between select-none relative h-10">
+              {/* Left: macOS Window traffic light controls */}
+              <div className="flex items-center gap-1.5 z-20">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" title="Close" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" title="Minimize" />
+                <div 
+                  onClick={() => setMaximizedPanel(maximizedPanel === 'terminal' ? null : 'terminal')}
+                  className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" 
+                  title="Toggle Fullscreen" 
+                />
               </div>
               
-              <div className="flex items-center gap-2">
+              {/* Center: Centered Session name (bash terminal style) */}
+              <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none">
+                <div className="flex items-center gap-2 text-on-surface-variant/75 text-[11px] font-mono-data tracking-wide select-none">
+                  <span>bash</span>
+                  <span className="opacity-45">—</span>
+                  <span className="text-on-surface/80">root@sandbox-pod-{sandbox?.sandboxId ? sandbox.sandboxId.slice(0, 8) : 'pod'}:/workspace</span>
+                  {/* Status Beacon */}
+                  <div className="relative flex items-center justify-center ml-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary absolute animate-ping opacity-75"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(255,255,255,0.8)]"></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: macOS Utilities (Clear & Reconnect) */}
+              <div className="flex items-center gap-1.5 z-20">
                 {/* Clear Terminal Display */}
                 <button 
                   onClick={() => {
                     if (xtermRef.current) {
                       xtermRef.current.clear();
                       xtermRef.current.write('\r\x1b[32m[Console cleared by user]\x1b[0m\r\n');
-                      xtermRef.current.write(`root@sandbox-pod-${sandbox?.sandboxId || 'sandbox'}:/workspace# `);
+                      if (sandbox) {
+                        xtermRef.current.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
+                      } else {
+                        xtermRef.current.write(`root@sandbox-pod-sandbox:/workspace# `);
+                      }
                     }
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-outline hover:text-white text-[10px] font-bold font-code-md cursor-pointer active:scale-95"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface-variant hover:text-primary text-[10px] font-semibold font-label-caps cursor-pointer active:scale-95 shadow-sm"
                   title="Clear Terminal Display"
                 >
-                  <span className="material-symbols-outlined text-[12px]">mop</span>
-                  Clear
+                  <span className="material-symbols-outlined text-[12px]">delete_sweep</span>
+                  <span>Clear</span>
                 </button>
 
                 {/* Terminal Reconnect Button */}
                 <button 
                   onClick={handleReconnectTerminal} 
                   disabled={isTerminalReloading}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-primary-container/20 border border-white/5 transition-all text-outline hover:text-white text-[10px] font-bold font-code-md cursor-pointer active:scale-95 group disabled:opacity-50"
+                  className="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface-variant hover:text-primary text-[10px] font-semibold font-label-caps cursor-pointer active:scale-95 shadow-sm disabled:opacity-40"
                   title="Reconnect Terminal Socket"
                 >
-                  <span className={`material-symbols-outlined text-[12px] group-hover:text-primary group-hover:rotate-180 transition-all duration-500 ${isTerminalReloading ? 'animate-spin' : ''}`}>autorenew</span>
-                  Reconnect
+                  <span className={`material-symbols-outlined text-[12px] ${isTerminalReloading ? 'animate-spin' : 'hover:rotate-180 transition-all duration-300'}`}>autorenew</span>
+                  <span>Reconnect</span>
                 </button>
+
+                {/* Close Button when maximized */}
+                {maximizedPanel === 'terminal' && (
+                  <button 
+                    onClick={() => setMaximizedPanel(null)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface hover:text-primary active:scale-90 cursor-pointer shadow-sm ml-1"
+                    title="Exit Fullscreen"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">close</span>
+                  </button>
+                )}
               </div>
             </header>
             
@@ -408,9 +712,23 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         </Panel>
       </PanelGroup>
+
+      {/* Global blurred glass background behind maximized overlays */}
+      <AnimatePresence>
+        {maximizedPanel && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            onClick={() => setMaximizedPanel(null)}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md cursor-pointer"
+          />
+        )}
+      </AnimatePresence>
     </motion.main>
   );
 }
