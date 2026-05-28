@@ -36,6 +36,11 @@ spec:
                 secretKeyRef:
                   name: ai-secret
                   key: MISTRAL_API_KEY
+            - name: GROK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret
+                  key: GROK_API_KEY
           livenessProbe:
             httpGet:
               path: /api/ai/healthz

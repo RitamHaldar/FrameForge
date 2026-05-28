@@ -32,9 +32,10 @@ export const useHome = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [selectedFileContent, setSelectedFileContent] = useState('');
     const [isLoadingFile, setIsLoadingFile] = useState(false);
-    
+
     // We keep socket in a ref so we can access it from components without causing re-renders
     const socketRef = useRef(null);
+    const suggestionSocketRef = useRef(null);
 
     // Sync to localStorage when states change
     useEffect(() => {
@@ -81,7 +82,7 @@ export const useHome = () => {
             // Connect to terminal socket
             const socketUrl = `http://${activeSandbox.sandboxId}.agent.localhost`;
             socketRef.current = io(socketUrl, { reconnection: false });
-            
+
             socketRef.current.on('connect', () => {
                 console.log('Terminal socket connected');
             });
@@ -103,8 +104,8 @@ export const useHome = () => {
             const res = await readFileContent(activeSandbox.sandboxId, filePath);
             if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
                 const contentObj = res.data[0];
-                const content = contentObj[filePath] !== undefined 
-                    ? contentObj[filePath] 
+                const content = contentObj[filePath] !== undefined
+                    ? contentObj[filePath]
                     : Object.values(contentObj)[0] || '';
                 setSelectedFileContent(content);
             } else {
@@ -143,7 +144,7 @@ export const useHome = () => {
                 data = await startSandbox();
                 setSandbox(data);
             }
-            
+
             // Connect to terminal socket
             if (data.sandboxId) {
                 // Disconnect old socket if exists
@@ -154,7 +155,7 @@ export const useHome = () => {
 
                 const socketUrl = `http://${data.sandboxId}.agent.localhost`;
                 socketRef.current = io(socketUrl, { reconnection: false });
-                
+
                 socketRef.current.on('connect', () => {
                     console.log('Terminal socket connected');
                 });
@@ -174,14 +175,14 @@ export const useHome = () => {
         if (!sandbox) return;
         setIsGenerating(true);
         setAiEvents([{ step: 'Initializing AI...', status: 'running', startTime: Date.now() }]);
-        
+
         try {
             await invokeAi(message, sandbox.sandboxId, agentNo, (eventText) => {
                 // Filter timestamps and connection events
                 if (eventText === 'Connection closed' || /^\d{2}:\d{2}:\d{2}\.\d{3}$/.test(eventText)) {
                     if (eventText === 'Connection closed') {
                         setIsGenerating(false);
-                        setAiEvents(prev => prev.map(ev => 
+                        setAiEvents(prev => prev.map(ev =>
                             ev.status === 'running' ? { ...ev, status: 'completed', timeTaken: ((Date.now() - ev.startTime) / 1000).toFixed(1) } : ev
                         ));
                         // Fetch files from sandbox API after generation completes
@@ -216,7 +217,7 @@ export const useHome = () => {
                         }
                         return ev;
                     });
-                    
+
                     // Add the new event as running
                     return [...updated, { step: cleanText, status: 'running', startTime: Date.now() }];
                 });
@@ -225,13 +226,52 @@ export const useHome = () => {
             console.error("AI Invocation failed:", error);
         } finally {
             setIsGenerating(false);
-            setAiEvents(prev => prev.map(ev => 
+            setAiEvents(prev => prev.map(ev =>
                 ev.status === 'running' ? { ...ev, status: 'completed', timeTaken: ((Date.now() - ev.startTime) / 1000).toFixed(1) } : ev
             ));
             fetchFiles(sandbox.sandboxId);
         }
     };
+    const SocketSuggestion = (codeText) => {
+        return new Promise((resolve) => {
+            if (!suggestionSocketRef.current) {
+                const socketUrl = `http://localhost`;
+                suggestionSocketRef.current = io(socketUrl, {
+                    reconnection: false,
+                    path: "/api/ai/socket.io"
+                });
+                suggestionSocketRef.current.on('connect', () => {
+                    console.log('Connected for suggestions..');
+                });
+                suggestionSocketRef.current.on('disconnect', () => {
+                    console.log('Suggestions socket disconnected');
+                    suggestionSocketRef.current = null;
+                });
+            }
 
+            suggestionSocketRef.current.once('suggestion', (data) => {
+                console.log('Received suggestion:', data);
+                resolve(data);
+            });
+
+            if (suggestionSocketRef.current.connected) {
+                suggestionSocketRef.current.emit("code", codeText);
+
+            } else {
+                suggestionSocketRef.current.once('connect', () => {
+                    suggestionSocketRef.current.emit("code", codeText);
+                });
+            }
+        });
+    };
+
+    useEffect(() => {
+        return () => {
+            if (suggestionSocketRef.current) {
+                suggestionSocketRef.current.disconnect();
+            }
+        };
+    }, []);
     return {
         sandbox,
         files,
@@ -247,6 +287,7 @@ export const useHome = () => {
         selectedFileContent,
         isLoadingFile,
         selectFile,
-        saveFile
+        saveFile,
+        SocketSuggestion
     };
 };

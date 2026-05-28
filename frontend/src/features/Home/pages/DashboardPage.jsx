@@ -82,6 +82,7 @@ export default function DashboardPage() {
               setMaximizedPanel={setMaximizedPanel}
               files={homeState.files}
               onSelectFile={homeState.selectFile}
+              SocketSuggestion={homeState.SocketSuggestion}
             />
           </Panel>
           <HorizontalResizeHandle disabled={!!maximizedPanel} />

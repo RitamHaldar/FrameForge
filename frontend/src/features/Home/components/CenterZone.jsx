@@ -6,6 +6,7 @@ import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import Editor from '@monaco-editor/react';
 import { FileCode2, FileJson, FileImage, FileText, File } from 'lucide-react';
+import debounce from 'lodash.debounce';
 
 const VerticalResizeHandle = () => (
   <PanelResizeHandle className="h-3 group flex items-center justify-center cursor-row-resize outline-none z-20">
@@ -37,7 +38,7 @@ const getFileIcon = (filename) => {
   return <File className="w-3.5 h-3.5 text-outline/40" />;
 };
 
-export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile }) {
+export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile, SocketSuggestion }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const previewTerminalRef = useRef(null);
@@ -169,6 +170,42 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const handleEditorChange = (value) => {
     setEditorValue(value || '');
   };
+  const suggestionRef = useRef(null);
+  const debouncedSuggestRef = useRef(null);
+  if (!debouncedSuggestRef.current) {
+    debouncedSuggestRef.current = debounce(async (codeText, editorInstance) => {
+      if (SocketSuggestion) {
+        suggestionRef.current = null;
+        try {
+          const suggestion = await SocketSuggestion(codeText);
+          if (suggestion && editorInstance) {
+            suggestionRef.current = suggestion;
+            const action = editorInstance.getAction('editor.action.inlineSuggest.trigger');
+            if (action) {
+              action.run().catch(err => {
+                // Ignore Monaco's internal cancellation errors when the user keeps typing
+                if (err?.name !== 'Canceled' && err?.message !== 'Canceled') {
+                  console.error('Inline suggest error:', err);
+                }
+              });
+            } else {
+              editorInstance.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
+            }
+          }
+        } catch (err) {
+          console.error("Socket suggestion error:", err);
+        }
+      }
+    }, 5000);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (debouncedSuggestRef.current) {
+        debouncedSuggestRef.current.cancel();
+      }
+    };
+  }, []);
 
   const handleSave = async () => {
     const fresh = saveRef.current;
@@ -186,10 +223,117 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   };
 
   const handleEditorDidMount = (editor, monaco) => {
-    // Add command Cmd/Ctrl + S to trigger handleSave using the fresh ref state
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });
+    editor.onDidChangeCursorPosition((e) => {
+      const model = editor.getModel();
+      const position = e.position;
+
+      const fullText = model.getValue();
+      const offset = model.getOffsetAt(position);
+      
+      // Send only 2-3 lines of code (1 line before the cursor, current line, and 1 line after)
+      const currentLine = position.lineNumber;
+      const startLineNumber = Math.max(1, currentLine - 1);
+      const endLineNumber = Math.min(model.getLineCount(), currentLine + 1);
+
+      const startOffset = model.getOffsetAt({ lineNumber: startLineNumber, column: 1 });
+      const endOffset = model.getOffsetAt({
+        lineNumber: endLineNumber,
+        column: model.getLineMaxColumn(endLineNumber)
+      });
+
+      const textBeforeCursor = fullText.substring(startOffset, offset);
+      const textAfterCursor = fullText.substring(offset, endOffset);
+      const textToSend = textBeforeCursor + "<CURSOR>" + textAfterCursor;
+
+      if (textToSend.trim()) {
+        debouncedSuggestRef.current(textToSend, editor);
+      }
+    });
+    const languages = [
+      "javascript",
+      "typescript",
+      "html",
+      "css",
+      "scss",
+      "json",
+      "markdown",
+      "plaintext"
+    ];
+
+    // REGISTER FOR ALL LANGUAGES
+    languages.forEach((lang) => {
+
+      monaco.languages.registerInlineCompletionsProvider(
+        lang,
+        {
+
+          provideInlineCompletions: async (
+            model,
+            position
+          ) => {
+
+            try {
+              const suggestion = suggestionRef.current;
+              suggestionRef.current = null; // Consume it so it only shows once
+
+              // NO RESPONSE
+              if (!suggestion?.trim()) {
+                return { items: [] };
+              }
+
+              let finalSuggestion = suggestion;
+              
+              // Prevent duplication by removing overlaps (e.g. user typed <h1>, AI suggested <h1>React</h1>)
+              const textBefore = model.getValueInRange({
+                startLineNumber: position.lineNumber,
+                startColumn: 1,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+              });
+              
+              for (let i = Math.min(textBefore.length, finalSuggestion.length); i > 0; i--) {
+                if (textBefore.endsWith(finalSuggestion.substring(0, i))) {
+                  finalSuggestion = finalSuggestion.substring(i);
+                  break;
+                }
+              }
+
+              // GHOST TEXT
+              return {
+                items: [
+                  {
+                    insertText: finalSuggestion,
+                    range: {
+                      startLineNumber: position.lineNumber,
+                      startColumn: position.column,
+                      endLineNumber: position.lineNumber,
+                      endColumn: position.column
+                    }
+                  },
+                ],
+              };
+
+            } catch (err) {
+
+              console.error(
+                "INLINE ERROR:",
+                err
+              );
+
+              return { items: [] };
+            }
+          },
+
+          disposeInlineCompletions() { },
+          freeInlineCompletions() { },
+        }
+      );
+
+    });
+
   };
 
   useEffect(() => {
@@ -315,8 +459,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
             layout
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
             className={`w-full h-full bg-surface-container/70 backdrop-blur-md border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-lg ${maximizedPanel === 'preview'
-                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container rounded-none'
-                : 'relative'
+              ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container rounded-none'
+              : 'relative'
               }`}
           >
             <header className="flex items-center justify-between px-4 py-1.5 bg-surface-container-lowest border-b border-outline-variant/25 z-20 select-none h-11">
@@ -367,8 +511,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   <button
                     onClick={() => setShowPreviewTerminal(!showPreviewTerminal)}
                     className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${showPreviewTerminal
-                        ? 'bg-primary text-on-primary border-primary hover:opacity-90 shadow-md'
-                        : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
+                      ? 'bg-primary text-on-primary border-primary hover:opacity-90 shadow-md'
+                      : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
                       }`}
                   >
                     <span className="material-symbols-outlined text-[12px]">terminal</span>
@@ -409,8 +553,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                         onClick={handleSave}
                         disabled={!isDirty || isSaving}
                         className={`flex items-center gap-1 px-2.5 py-0.5 rounded transition-all font-bold font-mono-data text-[9px] h-5.5 active:scale-95 border ${isDirty
-                            ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
-                            : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
+                          ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
+                          : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
                           }`}
                         title="Save File (Ctrl+S)"
                       >
@@ -463,8 +607,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                       onClick={handleSave}
                       disabled={!isDirty || isSaving}
                       className={`flex items-center gap-1 px-3 py-1 rounded-md transition-all font-bold font-mono-data text-[9px] h-7 active:scale-95 border ${isDirty
-                          ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
-                          : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
+                        ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
+                        : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
                         }`}
                       title="Save File (Ctrl+S)"
                     >
@@ -572,8 +716,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                           setIsDropdownOpen(false);
                                         }}
                                         className={`flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${isSelected
-                                            ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5'
-                                            : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
+                                          ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5'
+                                          : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
                                           }`}
                                       >
                                         <div className="flex-shrink-0 flex items-center justify-center">
@@ -633,7 +777,24 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                 verticalScrollbarSize: 0,
                                 horizontalScrollbarSize: 0,
                                 handleMouseWheel: true
-                              }
+                              },
+                              inlineSuggest: {
+                                enabled: true,
+                              },
+
+                              suggest: {
+                                preview: true,
+                              },
+
+                              minimap: {
+                                enabled: false,
+                              },
+
+                              fontSize: 14,
+
+                              wordWrap: "on",
+
+                              automaticLayout: true,
                             }}
                           />
                         </div>
@@ -774,8 +935,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
             layout
             transition={{ type: "spring", stiffness: 320, damping: 24 }}
             className={`w-full h-full bg-surface-container-lowest border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.6)] ${maximizedPanel === 'terminal'
-                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container-lowest rounded-none'
-                : 'relative'
+              ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container-lowest rounded-none'
+              : 'relative'
               }`}
           >
             <header className="flex items-center px-4 py-2 bg-surface-container-lowest border-b border-outline-variant/35 z-10 justify-between select-none relative h-10">
