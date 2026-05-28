@@ -50,6 +50,14 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const [iframeKey, setIframeKey] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showPreviewTerminal, setShowPreviewTerminal] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const showSuggestionsRef = useRef(false);
+  useEffect(() => {
+    showSuggestionsRef.current = showSuggestions;
+  }, [showSuggestions]);
+  const justAcceptedRef = useRef(false);
+  const acceptedLineRef = useRef(0);
+  const acceptedTextRef = useRef('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -196,7 +204,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
           console.error("Socket suggestion error:", err);
         }
       }
-    }, 5000);
+    }, 2500);
   }
 
   useEffect(() => {
@@ -226,28 +234,66 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });
-    editor.onDidChangeCursorPosition((e) => {
+    try {
+      monaco.editor.registerCommand('frameforge.inlineCompletionAccepted', (accessor, lineNumber, acceptedLineText) => {
+        justAcceptedRef.current = true;
+        acceptedLineRef.current = lineNumber;
+        acceptedTextRef.current = acceptedLineText;
+        suggestionRef.current = null;
+        if (debouncedSuggestRef.current) {
+          debouncedSuggestRef.current.cancel();
+        }
+      });
+    } catch (e) {
+      // Command might already be registered globally
+    }
+    editor.onDidChangeModelContent((e) => {
+      if (!showSuggestionsRef.current) return;
       const model = editor.getModel();
-      const position = e.position;
-
+      const position = editor.getPosition();
+      if (!position) return;
+ 
+      // Do not suggest before writing anything
+      const lineContentBeforeCursor = model.getLineContent(position.lineNumber).substring(0, position.column - 1);
+      if (!lineContentBeforeCursor.trim()) {
+        return;
+      }
+ 
+      // Check if suggestion was just accepted and not a major change yet
+      if (justAcceptedRef.current) {
+        const currentLineText = model.getLineContent(position.lineNumber);
+        const lineChanged = position.lineNumber !== acceptedLineRef.current;
+        const acceptedText = acceptedTextRef.current || '';
+        const diffLength = Math.abs(currentLineText.length - acceptedText.length);
+        const getWordCount = (str) => (str.match(/\b\w+\b/g) || []).length;
+        const wordDiff = Math.abs(getWordCount(currentLineText) - getWordCount(acceptedText));
+        
+        const isMajorChange = lineChanged || diffLength >= 5 || wordDiff >= 1;
+        if (!isMajorChange) {
+          return;
+        } else {
+          justAcceptedRef.current = false;
+        }
+      }
+ 
       const fullText = model.getValue();
       const offset = model.getOffsetAt(position);
-      
+ 
       // Send only 2-3 lines of code (1 line before the cursor, current line, and 1 line after)
       const currentLine = position.lineNumber;
       const startLineNumber = Math.max(1, currentLine - 1);
       const endLineNumber = Math.min(model.getLineCount(), currentLine + 1);
-
+ 
       const startOffset = model.getOffsetAt({ lineNumber: startLineNumber, column: 1 });
       const endOffset = model.getOffsetAt({
         lineNumber: endLineNumber,
         column: model.getLineMaxColumn(endLineNumber)
       });
-
+ 
       const textBeforeCursor = fullText.substring(startOffset, offset);
       const textAfterCursor = fullText.substring(offset, endOffset);
       const textToSend = textBeforeCursor + "<CURSOR>" + textAfterCursor;
-
+ 
       if (textToSend.trim()) {
         debouncedSuggestRef.current(textToSend, editor);
       }
@@ -276,16 +322,41 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
           ) => {
 
             try {
+              if (!showSuggestionsRef.current) {
+                return { items: [] };
+              }
+ 
+              // Do not suggest before writing anything
+              const lineContentBeforeCursor = model.getLineContent(position.lineNumber).substring(0, position.column - 1);
+              if (!lineContentBeforeCursor.trim()) {
+                return { items: [] };
+              }
+ 
+              // Check if just accepted and not a major change yet
+              if (justAcceptedRef.current) {
+                const currentLineText = model.getLineContent(position.lineNumber);
+                const lineChanged = position.lineNumber !== acceptedLineRef.current;
+                const acceptedText = acceptedTextRef.current || '';
+                const diffLength = Math.abs(currentLineText.length - acceptedText.length);
+                const getWordCount = (str) => (str.match(/\b\w+\b/g) || []).length;
+                const wordDiff = Math.abs(getWordCount(currentLineText) - getWordCount(acceptedText));
+                
+                const isMajorChange = lineChanged || diffLength >= 5 || wordDiff >= 1;
+                if (!isMajorChange) {
+                  return { items: [] };
+                }
+              }
+ 
               const suggestion = suggestionRef.current;
               suggestionRef.current = null; // Consume it so it only shows once
-
+ 
               // NO RESPONSE
               if (!suggestion?.trim()) {
                 return { items: [] };
               }
-
+ 
               let finalSuggestion = suggestion;
-              
+ 
               // Prevent duplication by removing overlaps (e.g. user typed <h1>, AI suggested <h1>React</h1>)
               const textBefore = model.getValueInRange({
                 startLineNumber: position.lineNumber,
@@ -293,14 +364,14 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 endLineNumber: position.lineNumber,
                 endColumn: position.column
               });
-              
+ 
               for (let i = Math.min(textBefore.length, finalSuggestion.length); i > 0; i--) {
                 if (textBefore.endsWith(finalSuggestion.substring(0, i))) {
                   finalSuggestion = finalSuggestion.substring(i);
                   break;
                 }
               }
-
+ 
               // GHOST TEXT
               return {
                 items: [
@@ -311,6 +382,11 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                       startColumn: position.column,
                       endLineNumber: position.lineNumber,
                       endColumn: position.column
+                    },
+                    command: {
+                      id: 'frameforge.inlineCompletionAccepted',
+                      title: 'Inline Completion Accepted',
+                      arguments: [position.lineNumber, textBefore + finalSuggestion]
                     }
                   },
                 ],
@@ -517,6 +593,19 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   >
                     <span className="material-symbols-outlined text-[12px]">terminal</span>
                     <span>{showPreviewTerminal ? 'Hide Terminal' : 'Show Terminal'}</span>
+                  </button>
+                )}
+
+                {maximizedPanel === 'preview' && (
+                  <button
+                    onClick={() => setShowSuggestions(!showSuggestions)}
+                    className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${showSuggestions
+                      ? 'bg-primary text-on-primary border-primary hover:opacity-90 shadow-md'
+                      : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
+                      }`}
+                  >
+                    <span className="material-symbols-outlined text-[12px]">lightbulb</span>
+                    <span>{showSuggestions ? 'Hide Suggestions' : 'Show Suggestions'}</span>
                   </button>
                 )}
               </div>
