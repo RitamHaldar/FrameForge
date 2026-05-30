@@ -565,23 +565,46 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
               {/* Center: Safari Unified Smart Address Bar & Preview Terminal Toggle */}
               <div className="flex-1 max-w-[480px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
-                <div className="flex-1 max-w-[340px]">
-                  <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
-                    <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
-                      <span className="material-symbols-outlined text-[11px]">lock</span>
-                      <span className="font-mono-data text-[11px] text-on-surface tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
-                        {sandbox?.previewUrl ? new URL(sandbox.previewUrl).host : 'Loading sandbox...'}
-                      </span>
+                {!(activeTab === 'code' && maximizedPanel !== 'preview') ? (
+                  <div className="flex-1 max-w-[340px]">
+                    <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
+                      <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
+                        <span className="material-symbols-outlined text-[11px]">lock</span>
+                        <span className="font-mono-data text-[11px] text-on-surface tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
+                          {sandbox?.previewUrl ? new URL(sandbox.previewUrl).host : 'Loading sandbox...'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleReload}
+                        className="flex items-center text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer"
+                        title="Reload Page"
+                      >
+                        <span className={`material-symbols-outlined text-[12px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={handleReload}
-                      className="flex items-center text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer"
-                      title="Reload Page"
-                    >
-                      <span className={`material-symbols-outlined text-[12px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
-                    </button>
                   </div>
-                </div>
+                ) : (
+                  selectedFile && (
+                    <div className="flex items-center gap-2 bg-surface-container/40 border border-outline-variant/15 rounded-lg px-3 py-1 h-8 shadow-sm">
+                      <div className="flex items-center bg-surface-container-lowest/80 px-2.5 py-0.5 rounded border border-outline-variant/20 font-label-caps text-[9px] text-on-surface gap-1.5 h-6">
+                        <span className="material-symbols-outlined text-outline text-[11.5px]">javascript</span>
+                        <span className="truncate max-w-[140px] font-semibold tracking-wide lowercase">{selectedFile.split(/[/\\]/).pop()}</span>
+                      </div>
+                      <button
+                        onClick={handleSave}
+                        disabled={!isDirty || isSaving}
+                        className={`flex items-center gap-1.5 px-3 py-0.5 rounded transition-all font-bold font-mono-data text-[9.5px] h-6 active:scale-95 border ${isDirty
+                          ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
+                          : 'bg-surface-container-lowest/50 text-on-surface-variant/35 border-outline-variant/15 cursor-not-allowed shadow-none'
+                          }`}
+                        title="Save File (Ctrl+S)"
+                      >
+                        <span className={`material-symbols-outlined text-[11px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
+                        {isSaving ? 'Saving' : 'Save'}
+                      </button>
+                    </div>
+                  )
+                )}
 
                 {maximizedPanel === 'preview' && (
                   <button
@@ -685,27 +708,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   <span className="material-symbols-outlined text-[14px]">ios_share</span>
                 </div>
 
-                {/* File context & save button if code tab is open and NOT maximized */}
-                {selectedFile && activeTab === 'code' && maximizedPanel !== 'preview' && (
-                  <div className="flex items-center gap-1.5 ml-1">
-                    <div className="flex items-center bg-surface-container px-2.5 py-1 rounded-md border border-outline-variant/25 font-label-caps text-[9px] text-on-surface gap-1.5 h-7">
-                      <span className="material-symbols-outlined text-outline text-[12px]">javascript</span>
-                      <span className="truncate max-w-[80px]">{selectedFile.split(/[/\\]/).pop()}</span>
-                    </div>
-                    <button
-                      onClick={handleSave}
-                      disabled={!isDirty || isSaving}
-                      className={`flex items-center gap-1 px-3 py-1 rounded-md transition-all font-bold font-mono-data text-[9px] h-7 active:scale-95 border ${isDirty
-                        ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
-                        : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
-                        }`}
-                      title="Save File (Ctrl+S)"
-                    >
-                      <span className={`material-symbols-outlined text-[12px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
-                      {isSaving ? 'Saving' : 'Save'}
-                    </button>
-                  </div>
-                )}
+
 
                 {/* Apple Revert Maximize button */}
                 {maximizedPanel === 'preview' && (

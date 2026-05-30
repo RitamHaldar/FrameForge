@@ -197,50 +197,109 @@ app.patch("/api/agent/updateFile", async (req, res) => {
 
 /**
  * @route POST /api/agent/createFile
- * @description Creates a file with the given content or creates if not exist.
+ * @description Creates a file or folder with the given name if not exist or retturns message file already exist.
  * - eg.
  *   {
- *     "files": [
- *       {
- *         "path": "file1.txt",
- *         "content": "Hello, World!"
- *       }
- *     ]
+ *     "path": "src",
+ *     "name": "filename.jsx",
+ *     "type": "file"
+ *   },
+ * {
+ *     "path": "src",
+ *     "name": "components",
+ *     "type": "folder"
  *   }
  * @access Public
  */
 
-app.post("/api/agent/createFile", async (req, res) => {
-    const files = req.body.files;
-    if (!files || !Array.isArray(files)) {
+app.post("/api/agent/createFileorFolder", async (req, res) => {
+    const { path: dirPath, name, type } = req.body;
+    if (!dirPath || !name) {
         return res.status(400).json({
-            message: "Files is required and must be an array",
+            message: "Path and name is required",
             status: "error",
             data: null
         });
     }
-    const result = await Promise.all(
-        files.map(async (file) => {
-            const { path, content } = file;
-            try {
-                const fullpath = path.join(WORKSPACE_DIR, path);
-                await fs.mkdir(path.dirname(fullpath), { recursive: true });
-                await fs.writeFile(fullpath, content, "utf8");
-                return {
-                    [fullpath]: "File created successfully"
-                }
-            } catch (error) {
-                return {
-                    [path]: `Error creating file: ${error.message}`
-                }
-            }
-        })
-    );
+    const fullpath = path.join(WORKSPACE_DIR, dirPath, name);
+    let exists = false;
+    try {
+        await fs.access(fullpath);
+        exists = true;
+    } catch {
+        exists = false;
+    }
+    if (exists) {
+        return res.status(400).json({
+            message: "File already exist",
+            status: "error",
+            data: null
+        });
+    }
+    if (type === "file") {
+        await fs.writeFile(fullpath, "", "utf8");
+    } else {
+        await fs.mkdir(fullpath, { recursive: true });
+    }
     res.status(200).json({
         message: "File created successfully",
         status: "success",
-        data: result
+        data: name
     });
 })
+
+/**
+ * @route DELETE /api/agent/deleteFile
+ * @description Deletes a file or folder from the working directory if exist or returns message file not found.
+ * - eg.
+ *   {
+ *     "path": "src",
+ *     "name": "filename.jsx",
+ *     "type": "file"
+ *   },
+ * {
+ *     "path": "src",
+ *     "name": "components",
+ *     "type": "folder"
+ *   }
+ * @access Public
+ */
+
+app.delete("/api/agent/deleteFileorFolder", async (req, res) => {
+    const { path: dirPath, name, type } = req.body;
+    if (!dirPath || !name) {
+        return res.status(400).json({
+            message: "Path and name is required",
+            status: "error",
+            data: null
+        });
+    }
+    const fullpath = path.join(WORKSPACE_DIR, dirPath, name);
+    let exists = false;
+    try {
+        await fs.access(fullpath);
+        exists = true;
+    } catch {
+        exists = false;
+    }
+    if (!exists) {
+        return res.status(400).json({
+            message: "File not found",
+            status: "error",
+            data: null
+        });
+    }
+    if (type === "file") {
+        await fs.unlink(fullpath);
+    } else {
+        await fs.rmdir(fullpath, { recursive: true });
+    }
+    res.status(200).json({
+        message: "File deleted successfully",
+        status: "success",
+        data: name
+    });
+})
+
 
 export default httpserver;

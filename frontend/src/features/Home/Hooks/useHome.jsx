@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { startSandbox, invokeAi, listFiles, readFileContent, updateFileContent } from '../service/api';
+import { startSandbox, invokeAi, listFiles, readFileContent, updateFileContent, createFile, deleteFile } from '../service/api';
+import { useDispatch } from 'react-redux';
+import { addToast } from '../slices/toastSlice';
 
 export const useHome = () => {
+    const dispatch = useDispatch();
     const [sandbox, setSandbox] = useState(() => {
         try {
             const item = window.localStorage.getItem('sandbox');
@@ -121,7 +124,9 @@ export const useHome = () => {
 
     const saveFile = async (filePath, content) => {
         const activeSandbox = sandbox;
-        if (!activeSandbox || !activeSandbox.sandboxId) return { success: false, error: 'No sandbox found.' };
+        if (!activeSandbox || !activeSandbox.sandboxId) {
+            return { success: false, error: 'No sandbox found.' };
+        }
 
         try {
             const res = await updateFileContent(activeSandbox.sandboxId, filePath, content);
@@ -134,6 +139,64 @@ export const useHome = () => {
         } catch (error) {
             console.error('Failed to save file content', error);
             return { success: false, error: error.message };
+        }
+    };
+
+    const createNewFile = async (filePath, type = 'file') => {
+        const activeSandbox = sandbox;
+        if (!activeSandbox || !activeSandbox.sandboxId) {
+            return { success: false, error: 'No sandbox active.' };
+        }
+
+        try {
+            const res = await createFile(activeSandbox.sandboxId, filePath, type);
+            if (res && res.status === 'success') {
+                dispatch(addToast({ message: `Successfully created ${filePath.split('/').pop()}`, type: 'success' }));
+                await fetchFiles(activeSandbox.sandboxId);
+                return { success: true };
+            } else {
+                if (res && res.message === 'File already exist') {
+                    dispatch(addToast({ message: `${type === 'file' ? 'File' : 'Folder'} already exists`, type: 'error' }));
+                }
+                return { success: false, error: res.message || 'Failed to create.' };
+            }
+        } catch (error) {
+            console.error('Failed to create', error);
+            const errMsg = error.response?.data?.message || error.message;
+            if (errMsg === 'File already exist' || errMsg === 'File already exists') {
+                dispatch(addToast({ message: `${type === 'file' ? 'File' : 'Folder'} already exists`, type: 'error' }));
+            }
+            return { success: false, error: errMsg };
+        }
+    };
+
+    const deleteFileOrFolder = async (filePath, type = 'file') => {
+        const activeSandbox = sandbox;
+        if (!activeSandbox || !activeSandbox.sandboxId) {
+            return { success: false, error: 'No sandbox active.' };
+        }
+
+        try {
+            const res = await deleteFile(activeSandbox.sandboxId, filePath, type);
+            if (res && res.status === 'success') {
+                dispatch(addToast({ message: `Successfully deleted ${filePath.split('/').pop()}`, type: 'success' }));
+                
+                // Clear active selected file if it's the deleted file
+                if (selectedFile === filePath) {
+                    setSelectedFile(null);
+                    setSelectedFileContent('');
+                }
+
+                await fetchFiles(activeSandbox.sandboxId);
+                return { success: true };
+            } else {
+                return { success: false, error: res.message || 'Failed to delete.' };
+            }
+        } catch (error) {
+            console.error('Failed to delete', error);
+            const errMsg = error.response?.data?.message || error.message;
+            dispatch(addToast({ message: `Error deleting: ${errMsg}`, type: 'error' }));
+            return { success: false, error: errMsg };
         }
     };
 
@@ -288,6 +351,8 @@ export const useHome = () => {
         isLoadingFile,
         selectFile,
         saveFile,
+        createNewFile,
+        deleteFileOrFolder,
         SocketSuggestion
     };
 };

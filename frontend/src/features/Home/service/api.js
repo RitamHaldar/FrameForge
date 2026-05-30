@@ -84,3 +84,31 @@ export const updateFileContent = async (sandboxId, filePath, content) => {
   });
   return response.data;
 };
+
+export const createFile = async (sandboxId, filePath, type = 'file') => {
+  const lastSlash = filePath.lastIndexOf('/');
+  const dirPath = lastSlash !== -1 ? filePath.substring(0, lastSlash) : '.';
+  const name = lastSlash !== -1 ? filePath.substring(lastSlash + 1) : filePath;
+
+  const response = await axios.post(`http://${sandboxId}.agent.localhost/api/agent/createFileorFolder`, {
+    path: dirPath,
+    name: name,
+    type: type
+  });
+  return response.data;
+};
+
+export const deleteFile = async (sandboxId, filePath, type = 'file') => {
+  const lastSlash = filePath.lastIndexOf('/');
+  const dirPath = lastSlash !== -1 ? filePath.substring(0, lastSlash) : '.';
+  const name = lastSlash !== -1 ? filePath.substring(lastSlash + 1) : filePath;
+
+  const response = await axios.delete(`http://${sandboxId}.agent.localhost/api/agent/deleteFileorFolder`, {
+    data: {
+      path: dirPath,
+      name: name,
+      type: type
+    }
+  });
+  return response.data;
+};

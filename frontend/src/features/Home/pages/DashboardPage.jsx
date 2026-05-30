@@ -3,10 +3,11 @@ import { Group as PanelGroup, Panel, Separator as PanelResizeHandle, useDefaultL
 import Sidebar from '../components/Sidebar';
 import CenterZone from '../components/CenterZone';
 import AgentWorkspace from '../components/AgentWorkspace';
+import Toast from '../components/Toast';
 import { useHome } from '../Hooks/useHome';
 
 const HorizontalResizeHandle = ({ disabled }) => (
-  <PanelResizeHandle 
+  <PanelResizeHandle
     disabled={disabled}
     className={`w-3 group flex items-center justify-center cursor-col-resize outline-none z-20 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${disabled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
   >
@@ -30,6 +31,7 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-background text-on-background font-body-md text-body-md antialiased overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+      <Toast />
       <div className="h-screen w-full relative bg-surface-dim p-3">
         {/* Ambient Glows */}
         <div className="bg-glow-layer bg-primary-container top-[-200px] left-[-100px]"></div>
@@ -40,9 +42,9 @@ export default function DashboardPage() {
           defaultLayout={defaultLayout}
           onLayoutChanged={onLayoutChanged}
         >
-          <Panel 
-            defaultSize='25' 
-            minSize='15' 
+          <Panel
+            defaultSize='25'
+            minSize='15'
             maxSize='30'
             className="transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
             style={{
@@ -51,16 +53,18 @@ export default function DashboardPage() {
               pointerEvents: maximizedPanel ? 'none' : 'auto'
             }}
           >
-            <Sidebar 
-              files={homeState.files} 
+            <Sidebar
+              files={homeState.files}
               selectedFile={homeState.selectedFile}
               onSelectFile={homeState.selectFile}
+              onCreateFile={homeState.createNewFile}
+              onDeleteFileOrFolder={homeState.deleteFileOrFolder}
             />
           </Panel>
           <HorizontalResizeHandle disabled={!!maximizedPanel} />
-          <Panel 
-            defaultSize='55' 
-            minSize='30' 
+          <Panel
+            defaultSize='55'
+            minSize='30'
             maxSize='80'
             style={{
               zIndex: maximizedPanel ? 50 : 1,
@@ -68,9 +72,9 @@ export default function DashboardPage() {
               transform: maximizedPanel ? 'none' : undefined
             }}
           >
-            <CenterZone 
-              sandbox={homeState.sandbox} 
-              socketRef={homeState.socketRef} 
+            <CenterZone
+              sandbox={homeState.sandbox}
+              socketRef={homeState.socketRef}
               terminalVersion={homeState.terminalVersion}
               reconnectTerminal={homeState.reconnectTerminal}
               fetchFiles={homeState.fetchFiles}
@@ -86,9 +90,9 @@ export default function DashboardPage() {
             />
           </Panel>
           <HorizontalResizeHandle disabled={!!maximizedPanel} />
-          <Panel 
-            defaultSize='25' 
-            minSize='15' 
+          <Panel
+            defaultSize='25'
+            minSize='15'
             maxSize='40'
             className="transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
             style={{
