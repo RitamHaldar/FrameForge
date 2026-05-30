@@ -82,6 +82,8 @@ npm run dev
 ```
 The server will start listening on port `3000` with hot-reloads enabled via `nodemon`.
 
+*Note: Since both the Authentication and AI-Worker services are hardcoded to container port `3000` in their internal environments, they will clash if run concurrently on the same local network interface outside of Docker/Kubernetes. During standalone local execution, configure one of them to use an alternative port if running them at the same time.*
+
 ---
 
 ### Running in Kubernetes (via Skaffold)

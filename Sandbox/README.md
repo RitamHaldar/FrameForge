@@ -21,8 +21,8 @@ The Sandboxing system is split into four distinct subcomponents:
 - **Purpose**: Included in every compiled sandbox image. It runs inside the isolated pod to execute shell commands (sending inputs/outputs via a Pseudo-Terminal), monitor file systems, read/write workspace files, and report back JIT terminal render frames.
 
 ### 4. `template/` (App Boilerplate)
-- **Tech Stack**: React 18, Vite, TailwindCSS.
-- **Purpose**: A clean Vite starter app cloned inside every new sandbox space upon boot. It acts as the developer's canvas, allowing instant previews of edits right after generation.
+- **Tech Stack**: React 19, Vite 8, TailwindCSS 4.
+- **Purpose**: A high-performance Vite starter app cloned inside every new sandbox space upon boot. Features custom polling configurations for ultra-fast, local JIT file sync hot-reloads within Kubernetes pods.
 
 ---
 
@@ -38,9 +38,11 @@ The Sandboxing system is split into four distinct subcomponents:
 ├── service/              # Pod provisioner controller
 │   ├── src/              # K8s Pod/Service manifest definitions
 │   └── server.js         # API launcher
-└── template/             # Boilerplate Vite workspace
-    ├── src/              # Template components
-    └── index.html        # App entry point
+└── template/             # Boilerplate Vite workspace canvas
+    ├── src/              # React components, index.css, and main.jsx
+    ├── index.html        # App entry point
+    ├── package.json      # Dependencies and scripts (React 19, Vite 8, Tailwind 4)
+    └── vite.config.js    # Vite dev server with aggressive file polling enabled
 ```
 
 ---

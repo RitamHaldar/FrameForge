@@ -23,14 +23,20 @@ The FrameForge Frontend is a high-fidelity client SPA designed with premium obsi
 ├── src/
 │   ├── app/                # Root App configurations
 │   │   ├── store/          # Redux toolkit store definitions
+│   │   │   └── store.js    # Global Redux store configuration
 │   │   ├── App.css         # Styling system theme values & animations
-│   │   └── App.jsx         # Router path declarations
+│   │   └── App.jsx         # Router path declarations & route definitions
 │   ├── features/           # Core feature modules
-│   │   └── Home/
+│   │   ├── Auth/           # User Authentication module
+│   │   │   ├── components/ # Login/Register form UI components, background, and social logins
+│   │   │   └── pages/      # Route entrypoints (AuthPage.jsx)
+│   │   └── Home/           # Home/Dashboard workspace module
 │   │       ├── components/ # Core dashboard UI components (Sidebar, CenterZone, Terminals)
-│   │       ├── Hooks/      # Custom React state hooks (useHome)
-│   │       └── pages/      # Route entrypoints (LandingPage, DashboardPage)
-│   └── main.jsx            # Index launcher injecting Redux providers
+│   │       ├── Hooks/      # Custom React hooks managing states and sockets (useHome)
+│   │       ├── pages/      # Route entrypoints (LandingPage, DashboardPage)
+│   │       ├── service/    # Axios and Fetch client communication layers (api.js)
+│   │       └── slices/     # Redux Toolkit state slices
+│   └── main.jsx            # Index launcher injecting Redux providers & React render root
 └── vite.config.js          # Vite configurations (CORS, Socket Proxy mappings)
 ```
 

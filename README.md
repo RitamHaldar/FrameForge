@@ -40,6 +40,7 @@ The system is designed as a highly scalable microservice infrastructure running 
 ```bash
 ├── .git/                 # Git repository history
 ├── ai-worker/            # Node.js Express service for AI orchestration
+├── auth/                 # Node.js Express service for identity management & social auth
 ├── frontend/             # Core React & Vite frontend client SPA
 ├── k8s/                  # Kubernetes configuration manifests
 ├── Sandbox/              # Isolated developer workspace services
@@ -57,15 +58,23 @@ The system is designed as a highly scalable microservice infrastructure running 
 ### Frontend Core
 - **Framework**: React 19 + Vite 8
 - **State Management**: Redux Toolkit (`@reduxjs/toolkit` & `react-redux`)
-- **Animations**: `framer-motion` (spring dynamics) & `gsap` (timeline choreography)
-- **Scroll Kinetics**: `lenis` (smooth scrolling)
+- **Routing**: React Router 7 (`react-router` 7.x)
+- **Animations**: Framer Motion 12 (spring dynamics) & GSAP (timeline choreography)
+- **Scroll Kinetics**: Lenis (smooth scrolling)
 - **Editor**: `@monaco-editor/react` (VS Code core engine integration)
-- **Terminal client**: `xterm` & `xterm-addon-fit`
+- **Terminal Client**: `xterm` & `xterm-addon-fit`
 - **Networking**: `socket.io-client` & `axios`
 - **Styling**: TailwindCSS 4.0
 
+### Identity & Authentication
+- **Runtime**: Node.js v18+ (ES modules enabled)
+- **Server Framework**: Express.js (v5.x)
+- **Database & ORM**: MongoDB via Mongoose
+- **Authentication**: Passport.js (local & Google OAuth 2.0 social federation)
+- **Security**: `bcryptjs` (password hashing) & `jsonwebtoken` (session JWTs)
+
 ### AI & Orchestration
-- **Framework**: Express (Node.js) & Socket.IO
+- **Framework**: Express.js (v5.x) & Socket.IO 4
 - **AI Core**: LangChain (`@langchain/openai`, `@langchain/groq`, `@langchain/mistralai`)
 - **Validation**: Zod schema validation
 
@@ -73,7 +82,7 @@ The system is designed as a highly scalable microservice infrastructure running 
 - **Deployments**: Kubernetes (Local / Cloud)
 - **Orchestration Tool**: Skaffold
 - **Containerization**: Docker
-- **Sandbox Agents**: Node.js & node-pty (interactive terminals)
+- **Sandbox Agents**: Node.js, Socket.IO 4 & node-pty (interactive terminals)
 
 ---
 

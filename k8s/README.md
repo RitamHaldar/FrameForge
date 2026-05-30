@@ -9,28 +9,33 @@ This folder contains all declarations and service descriptions required to host 
 Here is a list of all manifest files and their functional descriptions:
 
 ### 1. [ai-worker-deployment.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/ai-worker-deployment.yml) & [ai-worker-service.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/ai-worker-service.yml)
-- **Deployment**: Spins up the Express & LangChain-driven AI orchestration pods. It binds environment variables from `secrets.yml`.
-- **Service**: Exposes port `5001` (HTTP/WS) inside the cluster.
+- **Deployment**: Spins up the Express & LangChain-driven AI orchestration pods. Binds environment variables from `secrets.yml`.
+- **Service**: Exposes port `80` inside the cluster, targeting container port `3000` (HTTP and WebSocket path `/api/ai/socket.io`).
 
 ### 2. [sandbox-deployment.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/sandbox-deployment.yml) & [sandbox-service.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/sandbox-service.yml)
-- **Deployment**: Deploys the Sandbox provisioner service (`Sandbox/service`). It binds to the host's `/var/run/docker.sock` to enable Docker-in-Docker or spins pods directly inside Kubernetes.
-- **Service**: Exposes port `5000` inside the cluster.
+- **Deployment**: Deploys the Sandbox provisioner API controller service (`Sandbox/service`). Binds to the host's `/var/run/docker.sock` to enable isolated developer pod scheduling.
+- **Service**: Exposes port `80` inside the cluster, targeting container port `3000` (`/api/sandbox`).
 
 ### 3. [router-deployment.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/router-deployment.yml) & [router-service.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/router-service.yml)
-- **Deployment**: Spins up the gateway socket proxy to bridge connections between users and specific pods.
-- **Service**: Exposes port `8080` internally.
+- **Deployment**: Spins up the gateway socket proxy to bridge terminal inputs/outputs and files between users and specific isolated developer sandbox containers.
+- **Service**: Exposes port `80` inside the cluster, targeting container port `3000`.
 
-### 4. [ingress.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/ingress.yml)
-- Sets up ingress paths using `ingress-nginx`. Maps incoming traffic:
-  - `/api/sandbox` -> maps to `sandbox` service (`port 5000`)
-  - `/api/ai` -> maps to `ai-worker` service (`port 5001`)
-  - `/socket.io` -> maps to `router` service (`port 8080`)
-  - Wildcard / Preview subdomains map directly to target sandboxes via the router gateway.
+### 4. [auth-deployment.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/auth-deployment.yml) & [auth-service.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/auth-service.yml)
+- **Deployment**: Manages secure email-password registration/login and Passport.js Google OAuth identity flows. Binds variables from `secrets.yml`.
+- **Service**: Exposes port `80` inside the cluster, targeting container port `3000`.
 
-### 5. [rbac.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/rbac.yml)
-- Declares ServiceAccount permissions. Grants the `sandbox` service account access to create, read, list, and delete pods, namespaces, services, and deployments inside the cluster dynamically.
+### 5. [ingress.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/ingress.yml)
+- Sets up path-based and host-based routing via `ingress-nginx`. Maps incoming traffic:
+  - `/api/sandbox` -> maps to `sandbox-service` (port `80`)
+  - `/api/ai` -> maps to `ai-worker-service` (port `80`)
+  - `/api/auth` -> maps to `auth-service` (port `80`)
+  - `*.preview.localhost` -> routes live sandbox preview requests to `router-service` (port `80`)
+  - `*.agent.localhost` -> routes WebSocket terminal/agent requests to `router-service` (port `80`)
 
-### 6. [secrets.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/secrets.yml)
+### 6. [rbac.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/rbac.yml)
+- Declares ServiceAccount permissions. Grants the `sandbox` service account access to create, read, list, and delete pods, services, and deployments inside the cluster dynamically.
+
+### 7. [secrets.yml](file:///c:/Users/RH/Desktop/FrameForge/k8s/secrets.yml)
 - Stores Base64-encoded environment secrets such as OpenAI API Keys, Groq API Keys, and Mistral keys. Make sure to encode your keys before editing:
   ```bash
   echo -n "your_api_key" | base64
