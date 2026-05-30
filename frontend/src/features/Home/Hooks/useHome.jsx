@@ -22,14 +22,7 @@ export const useHome = () => {
             return [];
         }
     });
-    const [aiEvents, setAiEvents] = useState(() => {
-        try {
-            const item = window.localStorage.getItem('aiEvents');
-            return item ? JSON.parse(item) : [];
-        } catch {
-            return [];
-        }
-    });
+    const [aiEvents, setAiEvents] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [terminalVersion, setTerminalVersion] = useState(0);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -39,6 +32,7 @@ export const useHome = () => {
     // We keep socket in a ref so we can access it from components without causing re-renders
     const socketRef = useRef(null);
     const suggestionSocketRef = useRef(null);
+    const abortControllerRef = useRef(null);
 
     // Sync to localStorage when states change
     useEffect(() => {
@@ -48,10 +42,6 @@ export const useHome = () => {
     useEffect(() => {
         window.localStorage.setItem('files', JSON.stringify(files));
     }, [files]);
-
-    useEffect(() => {
-        window.localStorage.setItem('aiEvents', JSON.stringify(aiEvents));
-    }, [aiEvents]);
 
     const fetchFiles = async (sandboxId) => {
         try {
@@ -234,8 +224,22 @@ export const useHome = () => {
         }
     };
 
+    const stopAiResponse = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+    };
+
     const sendAiMessage = async (message, agentNo = "1") => {
         if (!sandbox) return;
+
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsGenerating(true);
         setAiEvents([{ step: 'Initializing AI...', status: 'running', startTime: Date.now() }]);
 
@@ -259,13 +263,8 @@ export const useHome = () => {
                     cleanText = cleanText.slice(1, -1);
                 }
 
-                if (cleanText.startsWith('Files listed..')) {
+                if (cleanText.startsWith('Files listed..') || cleanText.startsWith('Files listed...')) {
                     fetchFiles(sandbox.sandboxId);
-                    cleanText = 'Files listed.';
-                }
-
-                if (cleanText.startsWith('Files read.')) {
-                    cleanText = 'Files read.';
                 }
 
                 // If we receive a new step, mark the previous running step as completed
@@ -284,15 +283,17 @@ export const useHome = () => {
                     // Add the new event as running
                     return [...updated, { step: cleanText, status: 'running', startTime: Date.now() }];
                 });
-            });
+            }, controller.signal);
         } catch (error) {
             console.error("AI Invocation failed:", error);
         } finally {
-            setIsGenerating(false);
-            setAiEvents(prev => prev.map(ev =>
-                ev.status === 'running' ? { ...ev, status: 'completed', timeTaken: ((Date.now() - ev.startTime) / 1000).toFixed(1) } : ev
-            ));
-            fetchFiles(sandbox.sandboxId);
+            if (abortControllerRef.current === controller) {
+                setIsGenerating(false);
+                setAiEvents(prev => prev.map(ev =>
+                    ev.status === 'running' ? { ...ev, status: 'completed', timeTaken: ((Date.now() - ev.startTime) / 1000).toFixed(1) } : ev
+                ));
+                fetchFiles(sandbox.sandboxId);
+            }
         }
     };
     const SocketSuggestion = (codeText) => {
@@ -345,6 +346,7 @@ export const useHome = () => {
         reconnectTerminal,
         initWorkspace,
         sendAiMessage,
+        stopAiResponse,
         fetchFiles,
         selectedFile,
         selectedFileContent,

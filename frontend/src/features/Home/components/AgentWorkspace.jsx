@@ -1,15 +1,53 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
 import { Sparkles, Cpu, ChevronDown } from 'lucide-react';
 
 const models = [
-  { id: '1', name: 'Minimax', description: 'Fast & Creative', icon: '⚡' },
-  { id: '2', name: 'Mistral', description: 'Logical & Dense', icon: '🧠' }
+  { id: '1', name: 'Pro', description: 'Deep & Exhaustive Reasoning' },
+  { id: '2', name: 'Fast', description: 'Rapid & Efficient Completions' }
 ];
 
-function EventItem({ event, itemVariants }) {
+const parseFiles = (stepText) => {
+  let files = [];
+  let title = stepText;
+
+  // Normalize string by trimming newlines/spaces
+  const cleanStep = stepText.trim();
+
+  if (cleanStep.includes('Listing files...')) {
+    title = 'Listing files';
+  } else if (cleanStep.includes('Files listed...')) {
+    title = 'Listing files';
+    const filesPart = cleanStep.substring(cleanStep.indexOf('Files listed...') + 'Files listed...'.length);
+    files = filesPart.split(',').map(f => f.trim()).filter(Boolean);
+  } else if (cleanStep.includes('Reading files...')) {
+    title = 'Reading files';
+  } else if (cleanStep.includes('Files read.')) {
+    title = 'Reading files';
+    const filesPart = cleanStep.substring(cleanStep.indexOf('Files read.') + 'Files read.'.length);
+    files = filesPart.split(',').map(f => f.trim()).filter(Boolean);
+  } else if (cleanStep.startsWith('Updating files...')) {
+    title = 'Updating files';
+    const filesPart = cleanStep.substring('Updating files...'.length);
+    files = filesPart.split(',').map(f => f.trim()).filter(Boolean);
+  } else if (cleanStep.startsWith('Updating files') && cleanStep.includes('...')) {
+    title = 'Updating files';
+    const filesPart = cleanStep.substring(cleanStep.indexOf('...') + 3);
+    files = filesPart.split(',').map(f => f.trim()).filter(Boolean);
+  } else if (cleanStep.includes('Files updated.')) {
+    title = 'Updating files';
+  }
+
+  return { title, files };
+};
+
+function EventItem({ event, itemVariants, isLatest }) {
   const [elapsed, setElapsed] = useState(0);
+  const [dropdownOpen, setDropdownOpen] = useState(isLatest);
+
+  const { title, files } = parseFiles(event.step);
+  const displayTitle = files.length > 0 ? title : event.step;
 
   useEffect(() => {
     if (event.status !== 'running') return;
@@ -21,6 +59,10 @@ function EventItem({ event, itemVariants }) {
 
     return () => clearInterval(interval);
   }, [event.status, event.startTime]);
+
+  useEffect(() => {
+    setDropdownOpen(isLatest);
+  }, [isLatest]);
 
   const displayTime = event.status === 'completed' ? event.timeTaken : elapsed;
   const isError = event.step.toLowerCase().includes('error');
@@ -43,35 +85,102 @@ function EventItem({ event, itemVariants }) {
 
   if (event.status === 'completed') {
     return (
-      <motion.div 
-        variants={itemVariants} 
-        className="flex items-center justify-between py-1 px-2.5 hover:bg-surface-container-low/50 rounded transition-all duration-300 select-none"
-      >
-        <div className="flex items-center gap-2 text-on-surface-variant/80">
-          <span className="material-symbols-outlined text-primary/70 text-[12px] font-bold">check</span>
-          <span className="font-mono-data text-[11px] text-on-surface-variant truncate max-w-[200px]" title={event.step}>{event.step}</span>
+      <motion.div variants={itemVariants} className="flex flex-col select-none">
+        <div 
+          className="flex items-center justify-between py-1 px-2.5 hover:bg-surface-container-low/50 rounded transition-all duration-300 cursor-pointer"
+          onClick={() => {
+            if (files.length > 0) setDropdownOpen(!dropdownOpen);
+          }}
+        >
+          <div className="flex items-center gap-2 text-on-surface-variant/80">
+            <span className="material-symbols-outlined text-primary/70 text-[12px] font-bold">check</span>
+            <span className="font-mono-data text-[11px] text-on-surface-variant truncate max-w-[180px]" title={displayTitle}>{displayTitle}</span>
+            {files.length > 0 && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDropdownOpen(!dropdownOpen);
+                }}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/25 hover:border-primary/45 transition-all text-[9px] font-bold cursor-pointer"
+              >
+                <span>{files.length} {files.length === 1 ? 'file' : 'files'}</span>
+                <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+          </div>
+          <span className="font-mono-data text-[10px] text-on-surface-variant/40">{displayTime}s</span>
         </div>
-        <span className="font-mono-data text-[10px] text-on-surface-variant/40">{displayTime}s</span>
+
+        {/* Dropdown list of files */}
+        {files.length > 0 && dropdownOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="pl-6 pr-3 pb-2 pt-1.5 flex flex-col gap-1.5 border-l border-outline-variant/35 ml-4.5 mt-0.5 font-mono-data text-[10px] text-on-surface-variant/75 bg-surface-container-low/10 rounded-md"
+          >
+            {files.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-2 hover:text-white transition-colors duration-150 py-0.5">
+                <span className="material-symbols-outlined text-outline" style={{ fontSize: '9px' }}>description</span>
+                <span className="truncate">{file}</span>
+              </div>
+            ))}
+          </motion.div>
+        )}
       </motion.div>
     );
   }
 
   return (
-    <motion.div 
-      variants={itemVariants} 
-      className="bg-surface-container-low border border-outline-variant/30 rounded px-2.5 py-1 flex items-center justify-between shadow-sm relative overflow-hidden"
-    >
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary"></div>
-      <div className="flex items-center gap-2 text-primary">
-        <span className="material-symbols-outlined animate-spin text-[12px]">progress_activity</span>
-        <span className="font-mono-data text-[11px] font-medium tracking-tight truncate max-w-[200px]" title={event.step}>{event.step}</span>
+    <motion.div variants={itemVariants} className="flex flex-col">
+      <div 
+        className="bg-surface-container-low border border-outline-variant/30 rounded px-2.5 py-1 flex items-center justify-between shadow-sm relative overflow-hidden cursor-pointer"
+        onClick={() => {
+          if (files.length > 0) setDropdownOpen(!dropdownOpen);
+        }}
+      >
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary"></div>
+        <div className="flex items-center gap-2 text-primary">
+          <span className="material-symbols-outlined animate-spin text-[12px]">progress_activity</span>
+          <span className="font-mono-data text-[11px] font-medium tracking-tight truncate max-w-[180px]" title={displayTitle}>{displayTitle}</span>
+          {files.length > 0 && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setDropdownOpen(!dropdownOpen);
+              }}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/25 hover:border-primary/45 transition-all text-[9px] font-bold cursor-pointer"
+            >
+              <span>{files.length} {files.length === 1 ? 'file' : 'files'}</span>
+              <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+        </div>
+        <span className="font-mono-data text-[10px] text-primary/80 animate-pulse">{displayTime}s</span>
       </div>
-      <span className="font-mono-data text-[10px] text-primary/80 animate-pulse">{displayTime}s</span>
+
+      {/* Dropdown list of files */}
+      {files.length > 0 && dropdownOpen && (
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="pl-6 pr-3 pb-2 pt-1.5 flex flex-col gap-1.5 border-l border-outline-variant/35 ml-4.5 mt-1 font-mono-data text-[10px] text-on-surface-variant/75 bg-surface-container-low/10 rounded-md"
+        >
+          {files.map((file, idx) => (
+            <div key={idx} className="flex items-center gap-2 hover:text-white transition-colors duration-150 py-0.5">
+              <span className="material-symbols-outlined text-outline" style={{ fontSize: '9px' }}>description</span>
+              <div className="w-1.5 h-1.5 rounded-full border border-primary/20 border-t-primary animate-spin flex-shrink-0" style={{ animationDuration: '0.8s' }}></div>
+              <span className="truncate">{file}</span>
+            </div>
+          ))}
+        </motion.div>
+      )}
     </motion.div>
   );
 }
 
-export default function AgentWorkspace({ aiEvents = [], isGenerating = false, sendAiMessage }) {
+export default function AgentWorkspace({ aiEvents = [], isGenerating = false, sendAiMessage, stopAiResponse }) {
   const scrollRef = useRef(null);
   const contentRef = useRef(null);
   const lenisRef = useRef(null);
@@ -177,7 +286,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
               />
             </div>
           )}
-
+ 
           {/* AI Event List */}
           {aiEvents.length > 0 ? (
             <motion.div 
@@ -196,6 +305,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
                   key={`${event.step}-${index}`} 
                   event={event} 
                   itemVariants={itemVariants} 
+                  isLatest={index === aiEvents.length - 1}
                 />
               ))}
             </motion.div>
@@ -216,7 +326,7 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
       </div>
 
       {/* Input Form at the bottom */}
-      <div className="px-4 pb-5 pt-2 mt-auto relative">
+      <div className="px-5 pb-6 pt-2 mt-auto relative">
         {/* Transparent Click-out overlay */}
         {isOpen && (
           <div 
@@ -225,76 +335,91 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
           />
         )}
         
-        <form onSubmit={handleSend} className="relative flex items-center bg-surface-container-low border border-outline-variant/35 rounded-md p-1.5 shadow-inner focus-within:border-outline/50 transition-all duration-300 gap-1.5">
+        <form 
+          onSubmit={handleSend} 
+          className="relative flex items-center bg-surface-container-low border border-outline-variant/30 rounded-xl p-2 shadow-2xl focus-within:border-primary/50 focus-within:shadow-[0_0_20px_rgba(170,59,255,0.15)] transition-all duration-300 gap-2"
+        >
           {/* Custom Dropdown Container */}
-          <div className="relative z-50 flex items-center pl-1">
+          <div className="relative z-50 flex items-center">
             <button
               type="button"
               disabled={isGenerating}
               onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-container-high hover:bg-surface-container-high/80 border border-outline-variant/30 hover:border-outline-variant/60 text-on-surface-variant hover:text-on-surface transition-all duration-200 cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline-variant/25 hover:border-outline-variant/50 text-on-surface hover:text-white transition-all duration-250 cursor-pointer disabled:opacity-50 select-none active:scale-95 shadow-sm"
             >
-              <span className="text-[12px]">{models.find(m => m.id === selectedModel)?.icon}</span>
-              <span className="text-[11px] font-bold tracking-tight">{models.find(m => m.id === selectedModel)?.name}</span>
+              <span className="text-[11px] font-bold tracking-tight uppercase">{models.find(m => m.id === selectedModel)?.name}</span>
               <ChevronDown className={`w-3.5 h-3.5 text-outline transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Dropdown Menu floating upwards */}
-            {isOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute bottom-full left-0 mb-2 w-56 bg-surface-container-high/95 backdrop-blur-xl border border-outline-variant/40 rounded-lg p-1 shadow-2xl flex flex-col gap-0.5"
-              >
-                <div className="px-2 py-1.5 text-[9px] font-bold text-outline uppercase tracking-wider select-none opacity-80">
-                  Select AI Model
-                </div>
-                {models.map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedModel(model.id);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded text-left transition-all duration-200 hover:bg-primary/10 group ${
-                      selectedModel === model.id ? 'bg-primary/15 border border-primary/20' : 'border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-[14px]">{model.icon}</span>
-                      <div className="flex flex-col">
-                        <span className={`text-[11px] font-bold tracking-tight ${selectedModel === model.id ? 'text-primary' : 'text-on-surface'}`}>
-                          {model.name}
-                        </span>
-                        <span className="text-[9px] text-outline leading-tight">{model.description}</span>
+            {/* Dropdown Menu floating upwards - OPAQUE Background */}
+            <AnimatePresence>
+              {isOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute bottom-full left-0 mb-2 w-60 bg-surface-container-high border border-outline-variant/50 rounded-xl p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.6)] flex flex-col gap-1 z-50"
+                >
+                  <div className="px-2.5 py-1.5 text-[8.5px] font-black text-primary uppercase tracking-widest select-none opacity-80">
+                    Select AI Engine
+                  </div>
+                  {models.map((model) => (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModel(model.id);
+                        setIsOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-200 hover:bg-primary/10 group ${
+                        selectedModel === model.id ? 'bg-primary/15 border border-primary/25' : 'border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="flex flex-col">
+                          <span className={`text-[11px] font-bold tracking-tight group-hover:text-primary transition-colors ${selectedModel === model.id ? 'text-primary' : 'text-on-surface'}`}>
+                            {model.name}
+                          </span>
+                          <span className="text-[9px] text-outline leading-tight mt-0.5">{model.description}</span>
+                        </div>
                       </div>
-                    </div>
-                    {selectedModel === model.id && (
-                      <span className="material-symbols-outlined text-[14px] text-primary font-bold">check</span>
-                    )}
-                  </button>
-                ))}
-              </motion.div>
-            )}
+                      {selectedModel === model.id && (
+                        <span className="material-symbols-outlined text-[14px] text-primary font-bold">check</span>
+                      )}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <input 
-            className="w-full bg-transparent py-2 pl-2 pr-10 font-body-sm text-body-sm text-on-surface placeholder:text-outline focus:outline-none disabled:opacity-50" 
-            placeholder={isGenerating ? "AI is generating code..." : "Interrupt or refine..."}
+            className="w-full bg-transparent py-2 pl-2 pr-12 font-mono-data text-[12px] text-white placeholder:text-outline/50 focus:outline-none disabled:opacity-40" 
+            placeholder={isGenerating ? "AI is generating code..." : "Ask Forge Engine to design..."}
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             disabled={isGenerating}
           />
-          <button 
-            type="submit"
-            className="absolute right-2 p-1.5 rounded-md text-outline hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-            disabled={isGenerating || !inputValue.trim()}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>send</span>
-          </button>
+          {isGenerating ? (
+            <button 
+              type="button"
+              onClick={stopAiResponse}
+              className="absolute right-2 p-2 rounded-full border border-red-500/30 bg-red-500/10 hover:bg-red-500/25 text-red-500 hover:shadow-[0_0_12px_rgba(239,68,68,0.4)] active:scale-90 hover:scale-105 transition-all duration-200 cursor-pointer flex items-center justify-center w-8 h-8 z-20"
+              title="Stop AI Generation"
+            >
+              <div className="w-2.5 h-2.5 bg-red-500 rounded-[2px]" />
+            </button>
+          ) : (
+            <button 
+              type="submit"
+              className="absolute right-2 p-2 rounded-lg bg-primary hover:bg-primary/95 text-on-primary hover:shadow-[0_0_12px_rgba(170,59,255,0.5)] active:scale-95 hover:scale-105 transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none cursor-pointer flex items-center justify-center"
+              disabled={!inputValue.trim()}
+            >
+              <span className="material-symbols-outlined font-black text-on-primary" style={{ fontSize: '15px' }}>arrow_upward</span>
+            </button>
+          )}
         </form>
       </div>
     </motion.section>

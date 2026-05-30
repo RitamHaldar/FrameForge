@@ -31,15 +31,20 @@ app.get("/api/ai/healthz", (req, res) => {
 
 io.on("connection", (socket) => {
     socket.on("code", async (data) => {
-        const res = await agent3.invoke({
-            messages: [
-                {
-                    role: "user",
-                    content: data
-                }
-            ]
-        })
-        io.emit("suggestion", res.messages[res.messages.length - 1].content)
+        try {
+            const res = await agent3.invoke({
+                messages: [
+                    {
+                        role: "user",
+                        content: data
+                    }
+                ]
+            });
+            socket.emit("suggestion", res.messages[res.messages.length - 1].content);
+        } catch (err) {
+            console.error("Failed to generate autocomplete suggestion:", err);
+            socket.emit("suggestion-error", err.message);
+        }
     })
 })
 /**

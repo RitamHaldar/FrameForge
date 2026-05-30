@@ -63,7 +63,7 @@ export default function DashboardPage() {
           </Panel>
           <HorizontalResizeHandle disabled={!!maximizedPanel} />
           <Panel
-            defaultSize='55'
+            defaultSize='50'
             minSize='30'
             maxSize='80'
             style={{

@@ -7,23 +7,24 @@ import { listFilesTool, readFilesTool, updateFilesTool } from "./tools.js";
 import { config } from "../config/config.js"
 import { sysyemPrompt } from "./systemPromt.js";
 
-const keepAliveAgent = new https.Agent({
-  keepAlive: true,
-  maxSockets: 64,
-  keepAliveMsecs: 60000,
-});
+
 
 const model = new ChatOpenAI({
-  model: "minimaxai/minimax-m2.7",
+  model: "stepfun-ai/step-3.7-flash",
   apiKey: config.NVDIAKEY,
-  temperature: 0.1,
+  temperature: 0.0,
+  top_p: 1.0,
+  frequency_penalty: 0.0,
+  presence_penalty: 0.0,
   streaming: true,
+  modelKwargs: {
+    enable_thinking: false, // Turn off chain-of-thought to maximize raw generation speed
+  },
   configuration: {
     baseURL: "https://integrate.api.nvidia.com/v1",
-    httpAgent: keepAliveAgent,
-    httpsAgent: keepAliveAgent,
+    // Removed legacy httpAgent and httpsAgent to enable modern Node.js fetch with HTTP/2 and undici connection pooling
   }
-})
+});
 
 const model2 = new ChatMistralAI({
   model: "mistral-medium-latest",

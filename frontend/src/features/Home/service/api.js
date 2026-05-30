@@ -7,7 +7,7 @@ export const startSandbox = async () => {
   return response.data;
 };
 
-export const invokeAi = async (message, projectId, agentNo, onEvent) => {
+export const invokeAi = async (message, projectId, agentNo, onEvent, signal) => {
   try {
     const response = await fetch(`${API_BASE}/ai/invoke`, {
       method: 'POST',
@@ -15,6 +15,7 @@ export const invokeAi = async (message, projectId, agentNo, onEvent) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ message, projectId, agentNo }),
+      signal,
     });
 
     if (!response.ok) {
@@ -59,6 +60,11 @@ export const invokeAi = async (message, projectId, agentNo, onEvent) => {
       }
     }
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log("AI Invocation aborted by user.");
+      onEvent("AI invocation stopped.");
+      return;
+    }
     console.error("Error in invokeAi:", error);
     onEvent("Error: AI invocation failed");
   }

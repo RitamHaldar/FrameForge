@@ -6,17 +6,25 @@ import { FileIcon, FolderLogo } from './Logos';
 const buildTree = (paths) => {
   const root = {};
   paths.forEach(path => {
-    const parts = path.split(/[/\\]/);
+    const isExplicitDir = path.endsWith('/') || path.endsWith('\\');
+    const cleanPath = isExplicitDir ? path.slice(0, -1) : path;
+    const parts = cleanPath.split(/[/\\]/);
     let current = root;
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
+      if (!part) continue;
+      
+      const isDir = i < parts.length - 1 || (i === parts.length - 1 && isExplicitDir);
+      
       if (!current[part]) {
         current[part] = {
           name: part,
-          isDir: i < parts.length - 1,
+          isDir: isDir,
           fullPath: parts.slice(0, i + 1).join('/'),
           children: {}
         };
+      } else if (isDir) {
+        current[part].isDir = true;
       }
       current = current[part].children;
     }

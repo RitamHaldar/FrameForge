@@ -13,10 +13,10 @@ const WORKSPACE_DIR = "/workspace";
 app.use(morgan("combined"));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-const io = new Server(httpserver,{
-    cors:{
-        origin:"*",
-        methods:["GET","POST","PUT","PATCH","DELETE"]
+const io = new Server(httpserver, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"]
     }
 })
 app.get("/api/agent/health", (req, res) => {
@@ -40,17 +40,17 @@ const ptyProcess = pty.spawn(shell, [], {
 ptyProcess.onData((data) => {
     io.emit("terminal-output", data);
 })
-ptyProcess.onExit(({exitCode, signal}) => {
+ptyProcess.onExit(({ exitCode, signal }) => {
     console.log(`PTY process exited with code: ${exitCode}, signal: ${signal}`);
 })
 
-io.on("connection",(socket)=>{
-    console.log("New connection",socket.id);
-    socket.on("terminal-input",(data)=>{
+io.on("connection", (socket) => {
+    console.log("New connection", socket.id);
+    socket.on("terminal-input", (data) => {
         ptyProcess.write(data);
     })
-    socket.on("disconnect",()=>{
-        console.log("Client disconnected",socket.id);
+    socket.on("disconnect", () => {
+        console.log("Client disconnected", socket.id);
     })
 })
 /**
@@ -80,6 +80,7 @@ app.get("/api/agent/listFiles", async (req, res) => {
             if (excludedir.includes(entry.name)) continue;
 
             if (entry.isDirectory()) {
+                fileList.push(relativepath + "/");
                 const subFiles = await listFiles(fullpath, basedir);
                 fileList.push(...subFiles);
             } else {
@@ -236,16 +237,27 @@ app.post("/api/agent/createFileorFolder", async (req, res) => {
             data: null
         });
     }
-    if (type === "file") {
+
+    const isFile = type === "file" || (name.includes(".") && !name.endsWith("/"));
+
+    if (isFile) {
+        await fs.mkdir(path.dirname(fullpath), { recursive: true });
         await fs.writeFile(fullpath, "", "utf8");
+        return res.status(200).json({
+            message: "File created successfully",
+            status: "success",
+            data: name
+        });
     } else {
         await fs.mkdir(fullpath, { recursive: true });
+        return res.status(200).json({
+            message: "Folder created successfully",
+            status: "success",
+            data: name,
+            path: fullpath
+        });
     }
-    res.status(200).json({
-        message: "File created successfully",
-        status: "success",
-        data: name
-    });
+
 })
 
 /**

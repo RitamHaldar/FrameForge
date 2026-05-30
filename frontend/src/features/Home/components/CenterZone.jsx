@@ -51,6 +51,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showPreviewTerminal, setShowPreviewTerminal] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mobileWidth, setMobileWidth] = useState(380);
   const showSuggestionsRef = useRef(false);
   useEffect(() => {
     showSuggestionsRef.current = showSuggestions;
@@ -356,7 +357,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
               }
  
               let finalSuggestion = suggestion;
- 
+
               // Prevent duplication by removing overlaps (e.g. user typed <h1>, AI suggested <h1>React</h1>)
               const textBefore = model.getValueInRange({
                 startLineNumber: position.lineNumber,
@@ -364,12 +365,72 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 endLineNumber: position.lineNumber,
                 endColumn: position.column
               });
- 
-              for (let i = Math.min(textBefore.length, finalSuggestion.length); i > 0; i--) {
-                if (textBefore.endsWith(finalSuggestion.substring(0, i))) {
-                  finalSuggestion = finalSuggestion.substring(i);
+
+              // 1. Whitespace-insensitive prefix-suffix overlap check with textBefore
+              const cleanB = textBefore.replace(/\s+/g, '');
+              const cleanS = finalSuggestion.replace(/\s+/g, '');
+              let maxOverlapChars = 0;
+              let bestSuggCutIndex = 0;
+              
+              for (let i = Math.min(cleanB.length, cleanS.length); i > 0; i--) {
+                if (cleanB.endsWith(cleanS.substring(0, i))) {
+                  let cleanCount = 0;
+                  let suggIdx = 0;
+                  while (suggIdx < finalSuggestion.length && cleanCount < i) {
+                    if (!/\s/.test(finalSuggestion[suggIdx])) {
+                      cleanCount++;
+                    }
+                    suggIdx++;
+                  }
+                  while (suggIdx < finalSuggestion.length && /\s/.test(finalSuggestion[suggIdx])) {
+                    suggIdx++;
+                  }
+                  maxOverlapChars = i;
+                  bestSuggCutIndex = suggIdx;
                   break;
                 }
+              }
+              
+              if (maxOverlapChars > 0) {
+                finalSuggestion = finalSuggestion.substring(bestSuggCutIndex);
+              }
+
+              // 2. Whitespace-insensitive suffix-prefix overlap check with textAfter
+              const textAfter = model.getValueInRange({
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: position.lineNumber,
+                endColumn: model.getLineMaxColumn(position.lineNumber)
+              });
+              
+              const cleanA = textAfter.replace(/\s+/g, '');
+              const cleanSUpdated = finalSuggestion.replace(/\s+/g, '');
+              let maxAfterOverlapChars = 0;
+              let bestSuggEndIndex = finalSuggestion.length;
+              
+              for (let i = Math.min(cleanA.length, cleanSUpdated.length); i > 0; i--) {
+                const suffixOfS = cleanSUpdated.substring(cleanSUpdated.length - i);
+                const prefixOfA = cleanA.substring(0, i);
+                if (suffixOfS === prefixOfA) {
+                  let cleanCount = 0;
+                  let suggIdx = finalSuggestion.length - 1;
+                  while (suggIdx >= 0 && cleanCount < i) {
+                    if (!/\s/.test(finalSuggestion[suggIdx])) {
+                      cleanCount++;
+                    }
+                    suggIdx--;
+                  }
+                  while (suggIdx >= 0 && /\s/.test(finalSuggestion[suggIdx])) {
+                    suggIdx--;
+                  }
+                  maxAfterOverlapChars = i;
+                  bestSuggEndIndex = suggIdx + 1;
+                  break;
+                }
+              }
+              
+              if (maxAfterOverlapChars > 0) {
+                finalSuggestion = finalSuggestion.substring(0, bestSuggEndIndex);
               }
  
               // GHOST TEXT
@@ -540,17 +601,37 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
               }`}
           >
             <header className="flex items-center justify-between px-4 py-1.5 bg-surface-container-lowest border-b border-outline-variant/25 z-20 select-none h-11">
-              {/* Left: macOS Window Traffic Lights & Navigation Controls */}
-              <div className="flex items-center gap-3.5 z-20">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" />
-                  <div
-                    onClick={() => setMaximizedPanel(maximizedPanel === 'preview' ? null : 'preview')}
-                    className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm"
-                    title="Toggle Fullscreen"
-                  />
-                </div>
+              {/* Left: Open in Editor / Close Editor Toggle Button */}
+              <div className="flex items-center gap-3 z-20">
+                <AnimatePresence mode="wait">
+                  {maximizedPanel !== 'preview' ? (
+                    <motion.button
+                      key="btn-enlarge"
+                      initial={{ opacity: 0, x: -12, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -12, scale: 0.95 }}
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      onClick={() => setMaximizedPanel('preview')}
+                      className="flex items-center gap-2 px-3 py-1 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/45 text-primary hover:shadow-[0_0_15px_rgba(170,59,255,0.2)] transition-all duration-300 select-none active:scale-95 cursor-pointer font-bold font-mono-data text-[10px] tracking-wide h-7.5 rounded-lg shadow-sm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" x2="14" y1="3" y2="10" /><line x1="3" x2="10" y1="21" y2="14" /></svg>
+                      <span>Open in Editor</span>
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      key="btn-minimize"
+                      initial={{ opacity: 0, x: -12, scale: 0.95 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: -12, scale: 0.95 }}
+                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      onClick={() => setMaximizedPanel(null)}
+                      className="flex items-center gap-2 px-3 py-1 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/35 text-on-surface hover:text-white transition-all duration-300 select-none active:scale-95 cursor-pointer font-bold font-mono-data text-[10px] tracking-wide h-7.5 rounded-lg shadow-sm"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" x2="21" y1="10" y2="3" /><line x1="10" x2="3" y1="14" y2="21" /></svg>
+                      <span>Close Editor</span>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
 
                 {/* Safari style Back/Forward arrows */}
                 <div className="hidden sm:flex items-center gap-0.5 text-on-surface-variant/40">
@@ -653,6 +734,30 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   </button>
                 </div>
 
+                {/* Mobile Preview Width Slider */}
+                <AnimatePresence>
+                  {maximizedPanel === 'preview' && viewMode === 'mobile' && (
+                    <motion.div
+                      initial={{ opacity: 0, width: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, width: 'auto', scale: 1 }}
+                      exit={{ opacity: 0, width: 0, scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                      className="flex items-center gap-2 bg-surface-container px-2.5 rounded-md border border-outline-variant/20 h-7 overflow-hidden shadow-sm"
+                    >
+                      <span className="font-mono-data text-[9px] text-outline/80 whitespace-nowrap">Width:</span>
+                      <input
+                        type="range"
+                        min="320"
+                        max="768"
+                        value={mobileWidth}
+                        onChange={(e) => setMobileWidth(Number(e.target.value))}
+                        className="w-16 sm:w-24 accent-primary h-1 rounded bg-outline-variant/30 cursor-pointer focus:outline-none"
+                      />
+                      <span className="font-mono-data text-[9.5px] text-primary font-bold min-w-[34px] text-right">{mobileWidth}px</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Tab Switchers (Preview / Code) or Save Option in enlarged modal */}
                 {maximizedPanel === 'preview' ? (
                   selectedFile && (
@@ -729,10 +834,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   <div className="flex-1 h-full flex items-center justify-center relative bg-black min-w-0">
                     <motion.div
                       animate={{
-                        width: viewMode === 'mobile' ? 'auto' : '100%',
+                        width: viewMode === 'mobile' ? mobileWidth : '100%',
                         height: viewMode === 'mobile' ? '100%' : '100%',
                         maxHeight: viewMode === 'mobile' ? 850 : '100%',
-                        aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
                         borderRadius: viewMode === 'mobile' ? 40 : 8
                       }}
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
