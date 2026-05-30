@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/GoogleContainerTools/skaffold/main/docs-v2/content/en/schemas/v4beta13.json
 apiVersion: skaffold/v4beta13
 kind: Config
 
@@ -5,6 +6,13 @@ build:
   tagPolicy:
     sha256: {}
   artifacts:
+    - image: auth
+      context: auth
+      sync:
+        infer:
+          - "src/**"
+      docker:
+        dockerfile: dockerfile
     - image: sandbox
       context: Sandbox/service
       sync:
@@ -49,3 +57,5 @@ manifests:
     - k8s/rbac.yml
     - k8s/ai-worker-deployment.yml
     - k8s/ai-worker-service.yml
+    - k8s/auth-deployment.yml
+    - k8s/auth-service.yml
