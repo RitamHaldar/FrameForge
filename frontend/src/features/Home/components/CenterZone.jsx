@@ -645,9 +645,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
               </div>
 
               {/* Center: Safari Unified Smart Address Bar & Preview Terminal Toggle */}
-              <div className="flex-1 max-w-[480px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
+              <div className="flex-1 max-w-[320px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
                 {!(activeTab === 'code' && maximizedPanel !== 'preview') ? (
-                  <div className="flex-1 max-w-[340px]">
+                  <div className="flex-1 max-w-[220px]">
                     <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
                       <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
                         <span className="material-symbols-outlined text-[11px]">lock</span>
@@ -716,23 +716,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
               {/* Right: Tab Mode, View Controls & active file tag */}
               <div className="flex items-center gap-2 z-20">
-                {/* PC/Mobile switchers */}
-                <div className="flex bg-surface-container rounded-md border border-outline-variant/20 overflow-hidden p-0.5 h-7">
-                  <button
-                    onClick={() => setViewMode('pc')}
-                    className={`px-2 rounded transition-all flex items-center h-full ${viewMode === 'pc' ? 'bg-surface-container-high text-primary shadow-sm border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
-                    title="Desktop View"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">desktop_windows</span>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('mobile')}
-                    className={`px-2 rounded transition-all flex items-center h-full ${viewMode === 'mobile' ? 'bg-surface-container-high text-primary shadow-sm border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
-                    title="Mobile View"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">smartphone</span>
-                  </button>
-                </div>
+
 
                 {/* Mobile Preview Width Slider */}
                 <AnimatePresence>

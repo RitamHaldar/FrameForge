@@ -1,16 +1,66 @@
-# React + Vite
+# FrameForge Frontend 🎨
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The FrameForge Frontend is a high-fidelity client SPA designed with premium obsidian aesthetics, glassmorphic layouts, and high-performance spring-physics scroll animations. It functions as the central cockpit where developers edit files in Monaco Editor, interact with real-time terminals, and view active sandboxes.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 💻 Tech Stack & Key Libraries
 
-## React Compiler
+- **React 19 & Vite 8**: Extremely fast development compiling and lightweight production builds.
+- **Redux Toolkit (`@reduxjs/toolkit` / `react-redux`)**: Global state management orchestrating sandboxes, file trees, file loads, and terminal connections.
+- **Framer Motion 12**: Spring-physics animation framework. Orchestrates staggered elements, 3D scroll tilts, and glass card slide-ins.
+- **Lenis 1.3**: Advanced scroll smoothing that makes all page transitions and scroll-linked animations incredibly fluid.
+- **Monaco Editor (`@monaco-editor/react`)**: Incorporates the full VS Code engine directly in the browser with custom autocomplete socket connections.
+- **Xterm.js**: Renders robust interactive developer terminals communicating seamlessly with sandboxed Docker containers.
+- **Lucide Icons**: Modern vector icon set mapping out controls across files and sidebar layers.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 📂 Codebase Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+├── logo/                   # Brand visual elements (Logo, Mockups)
+├── src/
+│   ├── app/                # Root App configurations
+│   │   ├── store/          # Redux toolkit store definitions
+│   │   ├── App.css         # Styling system theme values & animations
+│   │   └── App.jsx         # Router path declarations
+│   ├── features/           # Core feature modules
+│   │   └── Home/
+│   │       ├── components/ # Core dashboard UI components (Sidebar, CenterZone, Terminals)
+│   │       ├── Hooks/      # Custom React state hooks (useHome)
+│   │       └── pages/      # Route entrypoints (LandingPage, DashboardPage)
+│   └── main.jsx            # Index launcher injecting Redux providers
+└── vite.config.js          # Vite configurations (CORS, Socket Proxy mappings)
+```
+
+---
+
+## 🛠️ Design System & Styling
+
+FrameForge uses a tailwind-extended obsidian theme declared inside [App.css](file:///c:/Users/RH/Desktop/FrameForge/frontend/src/app/App.css):
+- ** obsidian Palette**: Deep slate backgrounds (`#131313`, `#0e0e0e`) offset by vibrant borders (`rgba(255,255,255,0.08)`).
+- **Interactive glows**: Background tracking orbs that shift position elegantly based on mouse movements.
+- **Glassmorphism**: Backdrop blur overlays (`glass-panel`) mixed with volumetric lighting effects.
+- **Typography**: Hanken Grotesk for gorgeous high-tech headings and JetBrains Mono for accurate telemetry listings.
+
+---
+
+## 🚀 Running Locally
+
+Follow these instructions to run the frontend independently in development mode:
+
+### 1. Install dependencies
+Make sure you are in the `/frontend` directory:
+```bash
+cd frontend
+npm install
+```
+
+### 2. Launch Developer Mode
+```bash
+npm run dev
+```
+The server launches on `http://localhost:5173`. 
+
+*Note: For full connectivity, ensure the backend services (`skaffold dev`) are active so that socket requests and sandbox requests resolve properly.*
