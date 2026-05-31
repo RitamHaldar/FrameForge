@@ -31,7 +31,6 @@ export const useHome = () => {
 
     // We keep socket in a ref so we can access it from components without causing re-renders
     const socketRef = useRef(null);
-    const suggestionSocketRef = useRef(null);
     const abortControllerRef = useRef(null);
 
     // Sync to localStorage when states change
@@ -296,46 +295,7 @@ export const useHome = () => {
             }
         }
     };
-    const SocketSuggestion = (codeText) => {
-        return new Promise((resolve) => {
-            if (!suggestionSocketRef.current) {
-                const socketUrl = `http://localhost`;
-                suggestionSocketRef.current = io(socketUrl, {
-                    reconnection: false,
-                    path: "/api/ai/socket.io"
-                });
-                suggestionSocketRef.current.on('connect', () => {
-                    console.log('Connected for suggestions..');
-                });
-                suggestionSocketRef.current.on('disconnect', () => {
-                    console.log('Suggestions socket disconnected');
-                    suggestionSocketRef.current = null;
-                });
-            }
 
-            suggestionSocketRef.current.once('suggestion', (data) => {
-                console.log('Received suggestion:', data);
-                resolve(data);
-            });
-
-            if (suggestionSocketRef.current.connected) {
-                suggestionSocketRef.current.emit("code", codeText);
-
-            } else {
-                suggestionSocketRef.current.once('connect', () => {
-                    suggestionSocketRef.current.emit("code", codeText);
-                });
-            }
-        });
-    };
-
-    useEffect(() => {
-        return () => {
-            if (suggestionSocketRef.current) {
-                suggestionSocketRef.current.disconnect();
-            }
-        };
-    }, []);
     return {
         sandbox,
         files,
@@ -354,7 +314,6 @@ export const useHome = () => {
         selectFile,
         saveFile,
         createNewFile,
-        deleteFileOrFolder,
-        SocketSuggestion
+        deleteFileOrFolder
     };
 };

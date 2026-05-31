@@ -6,7 +6,6 @@ import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import Editor from '@monaco-editor/react';
 import { FileCode2, FileJson, FileImage, FileText, File } from 'lucide-react';
-import debounce from 'lodash.debounce';
 
 const VerticalResizeHandle = () => (
   <PanelResizeHandle className="h-3 group flex items-center justify-center cursor-row-resize outline-none z-20">
@@ -38,7 +37,7 @@ const getFileIcon = (filename) => {
   return <File className="w-3.5 h-3.5 text-outline/40" />;
 };
 
-export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile, SocketSuggestion }) {
+export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const previewTerminalRef = useRef(null);
@@ -52,13 +51,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const [showPreviewTerminal, setShowPreviewTerminal] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mobileWidth, setMobileWidth] = useState(380);
-  const showSuggestionsRef = useRef(false);
-  useEffect(() => {
-    showSuggestionsRef.current = showSuggestions;
-  }, [showSuggestions]);
-  const justAcceptedRef = useRef(false);
-  const acceptedLineRef = useRef(0);
-  const acceptedTextRef = useRef('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -179,42 +171,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const handleEditorChange = (value) => {
     setEditorValue(value || '');
   };
-  const suggestionRef = useRef(null);
-  const debouncedSuggestRef = useRef(null);
-  if (!debouncedSuggestRef.current) {
-    debouncedSuggestRef.current = debounce(async (codeText, editorInstance) => {
-      if (SocketSuggestion) {
-        suggestionRef.current = null;
-        try {
-          const suggestion = await SocketSuggestion(codeText);
-          if (suggestion && editorInstance) {
-            suggestionRef.current = suggestion;
-            const action = editorInstance.getAction('editor.action.inlineSuggest.trigger');
-            if (action) {
-              action.run().catch(err => {
-                // Ignore Monaco's internal cancellation errors when the user keeps typing
-                if (err?.name !== 'Canceled' && err?.message !== 'Canceled') {
-                  console.error('Inline suggest error:', err);
-                }
-              });
-            } else {
-              editorInstance.trigger('keyboard', 'editor.action.inlineSuggest.trigger');
-            }
-          }
-        } catch (err) {
-          console.error("Socket suggestion error:", err);
-        }
-      }
-    }, 2500);
-  }
 
-  useEffect(() => {
-    return () => {
-      if (debouncedSuggestRef.current) {
-        debouncedSuggestRef.current.cancel();
-      }
-    };
-  }, []);
 
   const handleSave = async () => {
     const fresh = saveRef.current;
@@ -235,242 +192,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });
-    try {
-      monaco.editor.registerCommand('frameforge.inlineCompletionAccepted', (accessor, lineNumber, acceptedLineText) => {
-        justAcceptedRef.current = true;
-        acceptedLineRef.current = lineNumber;
-        acceptedTextRef.current = acceptedLineText;
-        suggestionRef.current = null;
-        if (debouncedSuggestRef.current) {
-          debouncedSuggestRef.current.cancel();
-        }
-      });
-    } catch (e) {
-      // Command might already be registered globally
-    }
-    editor.onDidChangeModelContent((e) => {
-      if (!showSuggestionsRef.current) return;
-      const model = editor.getModel();
-      const position = editor.getPosition();
-      if (!position) return;
- 
-      // Do not suggest before writing anything
-      const lineContentBeforeCursor = model.getLineContent(position.lineNumber).substring(0, position.column - 1);
-      if (!lineContentBeforeCursor.trim()) {
-        return;
-      }
- 
-      // Check if suggestion was just accepted and not a major change yet
-      if (justAcceptedRef.current) {
-        const currentLineText = model.getLineContent(position.lineNumber);
-        const lineChanged = position.lineNumber !== acceptedLineRef.current;
-        const acceptedText = acceptedTextRef.current || '';
-        const diffLength = Math.abs(currentLineText.length - acceptedText.length);
-        const getWordCount = (str) => (str.match(/\b\w+\b/g) || []).length;
-        const wordDiff = Math.abs(getWordCount(currentLineText) - getWordCount(acceptedText));
-        
-        const isMajorChange = lineChanged || diffLength >= 5 || wordDiff >= 1;
-        if (!isMajorChange) {
-          return;
-        } else {
-          justAcceptedRef.current = false;
-        }
-      }
- 
-      const fullText = model.getValue();
-      const offset = model.getOffsetAt(position);
- 
-      // Send only 2-3 lines of code (1 line before the cursor, current line, and 1 line after)
-      const currentLine = position.lineNumber;
-      const startLineNumber = Math.max(1, currentLine - 1);
-      const endLineNumber = Math.min(model.getLineCount(), currentLine + 1);
- 
-      const startOffset = model.getOffsetAt({ lineNumber: startLineNumber, column: 1 });
-      const endOffset = model.getOffsetAt({
-        lineNumber: endLineNumber,
-        column: model.getLineMaxColumn(endLineNumber)
-      });
- 
-      const textBeforeCursor = fullText.substring(startOffset, offset);
-      const textAfterCursor = fullText.substring(offset, endOffset);
-      const textToSend = textBeforeCursor + "<CURSOR>" + textAfterCursor;
- 
-      if (textToSend.trim()) {
-        debouncedSuggestRef.current(textToSend, editor);
-      }
-    });
-    const languages = [
-      "javascript",
-      "typescript",
-      "html",
-      "css",
-      "scss",
-      "json",
-      "markdown",
-      "plaintext"
-    ];
-
-    // REGISTER FOR ALL LANGUAGES
-    languages.forEach((lang) => {
-
-      monaco.languages.registerInlineCompletionsProvider(
-        lang,
-        {
-
-          provideInlineCompletions: async (
-            model,
-            position
-          ) => {
-
-            try {
-              if (!showSuggestionsRef.current) {
-                return { items: [] };
-              }
- 
-              // Do not suggest before writing anything
-              const lineContentBeforeCursor = model.getLineContent(position.lineNumber).substring(0, position.column - 1);
-              if (!lineContentBeforeCursor.trim()) {
-                return { items: [] };
-              }
- 
-              // Check if just accepted and not a major change yet
-              if (justAcceptedRef.current) {
-                const currentLineText = model.getLineContent(position.lineNumber);
-                const lineChanged = position.lineNumber !== acceptedLineRef.current;
-                const acceptedText = acceptedTextRef.current || '';
-                const diffLength = Math.abs(currentLineText.length - acceptedText.length);
-                const getWordCount = (str) => (str.match(/\b\w+\b/g) || []).length;
-                const wordDiff = Math.abs(getWordCount(currentLineText) - getWordCount(acceptedText));
-                
-                const isMajorChange = lineChanged || diffLength >= 5 || wordDiff >= 1;
-                if (!isMajorChange) {
-                  return { items: [] };
-                }
-              }
- 
-              const suggestion = suggestionRef.current;
-              suggestionRef.current = null; // Consume it so it only shows once
- 
-              // NO RESPONSE
-              if (!suggestion?.trim()) {
-                return { items: [] };
-              }
- 
-              let finalSuggestion = suggestion;
-
-              // Prevent duplication by removing overlaps (e.g. user typed <h1>, AI suggested <h1>React</h1>)
-              const textBefore = model.getValueInRange({
-                startLineNumber: position.lineNumber,
-                startColumn: 1,
-                endLineNumber: position.lineNumber,
-                endColumn: position.column
-              });
-
-              // 1. Whitespace-insensitive prefix-suffix overlap check with textBefore
-              const cleanB = textBefore.replace(/\s+/g, '');
-              const cleanS = finalSuggestion.replace(/\s+/g, '');
-              let maxOverlapChars = 0;
-              let bestSuggCutIndex = 0;
-              
-              for (let i = Math.min(cleanB.length, cleanS.length); i > 0; i--) {
-                if (cleanB.endsWith(cleanS.substring(0, i))) {
-                  let cleanCount = 0;
-                  let suggIdx = 0;
-                  while (suggIdx < finalSuggestion.length && cleanCount < i) {
-                    if (!/\s/.test(finalSuggestion[suggIdx])) {
-                      cleanCount++;
-                    }
-                    suggIdx++;
-                  }
-                  while (suggIdx < finalSuggestion.length && /\s/.test(finalSuggestion[suggIdx])) {
-                    suggIdx++;
-                  }
-                  maxOverlapChars = i;
-                  bestSuggCutIndex = suggIdx;
-                  break;
-                }
-              }
-              
-              if (maxOverlapChars > 0) {
-                finalSuggestion = finalSuggestion.substring(bestSuggCutIndex);
-              }
-
-              // 2. Whitespace-insensitive suffix-prefix overlap check with textAfter
-              const textAfter = model.getValueInRange({
-                startLineNumber: position.lineNumber,
-                startColumn: position.column,
-                endLineNumber: position.lineNumber,
-                endColumn: model.getLineMaxColumn(position.lineNumber)
-              });
-              
-              const cleanA = textAfter.replace(/\s+/g, '');
-              const cleanSUpdated = finalSuggestion.replace(/\s+/g, '');
-              let maxAfterOverlapChars = 0;
-              let bestSuggEndIndex = finalSuggestion.length;
-              
-              for (let i = Math.min(cleanA.length, cleanSUpdated.length); i > 0; i--) {
-                const suffixOfS = cleanSUpdated.substring(cleanSUpdated.length - i);
-                const prefixOfA = cleanA.substring(0, i);
-                if (suffixOfS === prefixOfA) {
-                  let cleanCount = 0;
-                  let suggIdx = finalSuggestion.length - 1;
-                  while (suggIdx >= 0 && cleanCount < i) {
-                    if (!/\s/.test(finalSuggestion[suggIdx])) {
-                      cleanCount++;
-                    }
-                    suggIdx--;
-                  }
-                  while (suggIdx >= 0 && /\s/.test(finalSuggestion[suggIdx])) {
-                    suggIdx--;
-                  }
-                  maxAfterOverlapChars = i;
-                  bestSuggEndIndex = suggIdx + 1;
-                  break;
-                }
-              }
-              
-              if (maxAfterOverlapChars > 0) {
-                finalSuggestion = finalSuggestion.substring(0, bestSuggEndIndex);
-              }
- 
-              // GHOST TEXT
-              return {
-                items: [
-                  {
-                    insertText: finalSuggestion,
-                    range: {
-                      startLineNumber: position.lineNumber,
-                      startColumn: position.column,
-                      endLineNumber: position.lineNumber,
-                      endColumn: position.column
-                    },
-                    command: {
-                      id: 'frameforge.inlineCompletionAccepted',
-                      title: 'Inline Completion Accepted',
-                      arguments: [position.lineNumber, textBefore + finalSuggestion]
-                    }
-                  },
-                ],
-              };
-
-            } catch (err) {
-
-              console.error(
-                "INLINE ERROR:",
-                err
-              );
-
-              return { items: [] };
-            }
-          },
-
-          disposeInlineCompletions() { },
-          freeInlineCompletions() { },
-        }
-      );
-
-    });
-
   };
 
   useEffect(() => {
@@ -948,8 +669,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                             onMount={handleEditorDidMount}
                             options={{
                               readOnly: false,
-                              minimap: { enabled: true },
-                              fontSize: 13,
+                              fontSize: 14,
                               fontFamily: '"JetBrains Mono", monospace',
                               scrollbar: {
                                 vertical: 'hidden',
@@ -958,22 +678,17 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                 horizontalScrollbarSize: 0,
                                 handleMouseWheel: true
                               },
+                              quickSuggestions: showSuggestions,
                               inlineSuggest: {
-                                enabled: true,
+                                enabled: showSuggestions,
                               },
-
                               suggest: {
-                                preview: true,
+                                preview: showSuggestions,
                               },
-
                               minimap: {
                                 enabled: false,
                               },
-
-                              fontSize: 14,
-
                               wordWrap: "on",
-
                               automaticLayout: true,
                             }}
                           />
@@ -1081,7 +796,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                             onMount={handleEditorDidMount}
                             options={{
                               readOnly: false,
-                              minimap: { enabled: true },
                               fontSize: 13,
                               fontFamily: '"JetBrains Mono", monospace',
                               scrollbar: {
@@ -1090,6 +804,16 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                 verticalScrollbarSize: 0,
                                 horizontalScrollbarSize: 0,
                                 handleMouseWheel: true
+                              },
+                              quickSuggestions: showSuggestions,
+                              inlineSuggest: {
+                                enabled: showSuggestions,
+                              },
+                              suggest: {
+                                preview: showSuggestions,
+                              },
+                              minimap: {
+                                enabled: true,
                               }
                             }}
                           />
