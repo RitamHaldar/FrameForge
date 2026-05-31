@@ -59,6 +59,11 @@ export default function DashboardPage() {
               onSelectFile={homeState.selectFile}
               onCreateFile={homeState.createNewFile}
               onDeleteFileOrFolder={homeState.deleteFileOrFolder}
+              onRefresh={() => {
+                if (homeState.sandbox?.sandboxId) {
+                  homeState.fetchFiles(homeState.sandbox.sandboxId);
+                }
+              }}
             />
           </Panel>
           <HorizontalResizeHandle disabled={!!maximizedPanel} />
@@ -86,6 +91,8 @@ export default function DashboardPage() {
               setMaximizedPanel={setMaximizedPanel}
               files={homeState.files}
               onSelectFile={homeState.selectFile}
+              optimizeCode={homeState.optimizeFileCode}
+              isOptimizing={homeState.isOptimizing}
             />
           </Panel>
           <HorizontalResizeHandle disabled={!!maximizedPanel} />

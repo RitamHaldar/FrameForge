@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, FilePlus, FolderPlus, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, FilePlus, FolderPlus, Trash2, RotateCw } from 'lucide-react';
 import { FileIcon, FolderLogo } from './Logos';
 
 const buildTree = (paths) => {
@@ -171,14 +171,28 @@ const FileNode = ({
   );
 };
 
-export default function Sidebar({ files = [], selectedFile, onSelectFile, onCreateFile, onDeleteFileOrFolder }) {
+export default function Sidebar({ files = [], selectedFile, onSelectFile, onCreateFile, onDeleteFileOrFolder, onRefresh }) {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [creationType, setCreationType] = useState('file');
   const [newFileName, setNewFileName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // State for showing custom delete confirmation dialog
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { path, type, name } or null
+
+  const handleRefresh = async () => {
+    if (onRefresh && !isRefreshing) {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 600);
+      }
+    }
+  };
 
   const filteredFiles = files.filter(path => {
     const filename = path.split(/[/\\]/).pop().toLowerCase();
@@ -256,6 +270,16 @@ export default function Sidebar({ files = [], selectedFile, onSelectFile, onCrea
         <div className="px-3 py-1 text-outline font-label-caps text-[10px] uppercase tracking-wider mb-2 flex items-center justify-between">
           <span>Explorer</span>
           <div className="flex items-center gap-1.5">
+            {onRefresh && (
+              <button 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-variant/50 transition-colors cursor-pointer disabled:opacity-50"
+                title="Refresh Explorer..."
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
             <button 
               onClick={() => handleStartCreation('file')}
               className={`p-1 rounded text-outline hover:text-on-surface hover:bg-surface-variant/50 transition-colors cursor-pointer ${isCreating && creationType === 'file' ? 'text-primary bg-primary/10' : ''}`}

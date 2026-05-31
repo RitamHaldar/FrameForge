@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { startSandbox, invokeAi, listFiles, readFileContent, updateFileContent, createFile, deleteFile } from '../service/api';
+import { startSandbox, invokeAi, listFiles, readFileContent, updateFileContent, createFile, deleteFile, optimizeCode } from '../service/api';
 import { useDispatch } from 'react-redux';
 import { addToast } from '../slices/toastSlice';
 
@@ -14,33 +14,26 @@ export const useHome = () => {
             return null;
         }
     });
-    const [files, setFiles] = useState(() => {
-        try {
-            const item = window.localStorage.getItem('files');
-            return item ? JSON.parse(item) : [];
-        } catch {
-            return [];
-        }
-    });
+    const [files, setFiles] = useState([]);
     const [aiEvents, setAiEvents] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [terminalVersion, setTerminalVersion] = useState(0);
     const [selectedFile, setSelectedFile] = useState(null);
     const [selectedFileContent, setSelectedFileContent] = useState('');
     const [isLoadingFile, setIsLoadingFile] = useState(false);
+    const [isOptimizing, setIsOptimizing] = useState(false);
 
     // We keep socket in a ref so we can access it from components without causing re-renders
     const socketRef = useRef(null);
     const abortControllerRef = useRef(null);
 
-    // Sync to localStorage when states change
     useEffect(() => {
-        if (sandbox) window.localStorage.setItem('sandbox', JSON.stringify(sandbox));
+        if (sandbox) {
+            window.localStorage.setItem('sandbox', JSON.stringify(sandbox));
+        } else {
+            window.localStorage.removeItem('sandbox');
+        }
     }, [sandbox]);
-
-    useEffect(() => {
-        window.localStorage.setItem('files', JSON.stringify(files));
-    }, [files]);
 
     const fetchFiles = async (sandboxId) => {
         try {
@@ -296,6 +289,28 @@ export const useHome = () => {
         }
     };
 
+    const optimizeFileCode = async (code, language, filename) => {
+        setIsOptimizing(true);
+        try {
+            const res = await optimizeCode(code, language, filename);
+            if (res && res.success) {
+                dispatch(addToast({ message: 'Code optimized successfully! Review and save changes.', type: 'success' }));
+                return { success: true, optimizedCode: res.optimizedCode };
+            } else {
+                const errMsg = res?.message || 'Failed to optimize code.';
+                dispatch(addToast({ message: errMsg, type: 'error' }));
+                return { success: false, error: errMsg };
+            }
+        } catch (error) {
+            console.error('Failed to optimize code', error);
+            const errMsg = error.response?.data?.message || error.message;
+            dispatch(addToast({ message: `Optimization error: ${errMsg}`, type: 'error' }));
+            return { success: false, error: errMsg };
+        } finally {
+            setIsOptimizing(false);
+        }
+    };
+
     return {
         sandbox,
         files,
@@ -311,9 +326,11 @@ export const useHome = () => {
         selectedFile,
         selectedFileContent,
         isLoadingFile,
+        isOptimizing,
         selectFile,
         saveFile,
         createNewFile,
-        deleteFileOrFolder
+        deleteFileOrFolder,
+        optimizeFileCode
     };
 };

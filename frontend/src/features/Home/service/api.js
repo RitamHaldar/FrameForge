@@ -33,9 +33,9 @@ export const invokeAi = async (message, projectId, agentNo, onEvent, signal) => 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
+
       buffer += decoder.decode(value, { stream: true });
-      
+
       // Split on double newline (SSE event boundary)
       const parts = buffer.split('\n\n');
       buffer = parts.pop() || '';
@@ -115,6 +115,15 @@ export const deleteFile = async (sandboxId, filePath, type = 'file') => {
       name: name,
       type: type
     }
+  });
+  return response.data;
+};
+
+export const optimizeCode = async (code, language, filename) => {
+  const response = await axios.post(`${API_BASE}/ai/optimize-code`, {
+    code,
+    language,
+    filename
   });
   return response.data;
 };

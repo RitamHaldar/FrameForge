@@ -5,7 +5,8 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import Editor from '@monaco-editor/react';
-import { FileCode2, FileJson, FileImage, FileText, File } from 'lucide-react';
+import { registerCompletion } from 'monacopilot';
+import { FileCode2, FileJson, FileImage, FileText, File, FolderOpen } from 'lucide-react';
 
 const VerticalResizeHandle = () => (
   <PanelResizeHandle className="h-3 group flex items-center justify-center cursor-row-resize outline-none z-20">
@@ -37,7 +38,7 @@ const getFileIcon = (filename) => {
   return <File className="w-3.5 h-3.5 text-outline/40" />;
 };
 
-export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile }) {
+export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile, optimizeCode, isOptimizing }) {
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const previewTerminalRef = useRef(null);
@@ -49,7 +50,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const [iframeKey, setIframeKey] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showPreviewTerminal, setShowPreviewTerminal] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [mobileWidth, setMobileWidth] = useState(380);
   const dropdownRef = useRef(null);
 
@@ -146,9 +146,10 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // States for active file code editing
   const [editorValue, setEditorValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const showSuggestionsRef = useRef(false);
 
   const isDirty = editorValue !== (selectedFileContent || '');
 
@@ -166,10 +167,12 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     if (selectedFile) {
       setActiveTab('code');
     }
+    clearOptimizedDecorations();
   }, [selectedFile]);
 
   const handleEditorChange = (value) => {
     setEditorValue(value || '');
+    clearOptimizedDecorations();
   };
 
 
@@ -181,6 +184,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       const res = await fresh.saveFile(fresh.selectedFile, fresh.editorValue);
       if (res.success) {
         console.log('File saved successfully');
+        clearOptimizedDecorations();
       } else {
         alert(`Failed to save file: ${res.error}`);
       }
@@ -188,11 +192,139 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     setIsSaving(false);
   };
 
+  const editorRef = useRef(null);
+  const monacoRef = useRef(null);
+  const decorationsRef = useRef(null);
+
+  const clearOptimizedDecorations = () => {
+    if (decorationsRef.current) {
+      if (typeof decorationsRef.current.clear === 'function') {
+        decorationsRef.current.clear();
+      } else if (editorRef.current && Array.isArray(decorationsRef.current)) {
+        decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, []);
+      }
+      decorationsRef.current = null;
+    }
+  };
+
+  const handleOptimizeCode = async () => {
+    if (!selectedFile || isOptimizing) return;
+    try {
+      const file = selectedFile;
+      const language = file.endsWith('.json') ? 'json' :
+                       file.endsWith('.css') ? 'css' :
+                       file.endsWith('.html') ? 'html' :
+                       'javascript';
+      const cleanFilename = file.split(/[/\\]/).pop() || 'index.js';
+
+      if (optimizeCode) {
+        const originalCode = editorValue;
+        const res = await optimizeCode(editorValue, language, cleanFilename);
+        if (res && res.success && res.optimizedCode) {
+          setEditorValue(res.optimizedCode);
+
+          const optimizedLines = getDiffLines(originalCode, res.optimizedCode);
+          
+          setTimeout(() => {
+            if (editorRef.current && monacoRef.current && optimizedLines.length > 0) {
+              const monaco = monacoRef.current;
+              const editor = editorRef.current;
+              
+              const newDecorations = optimizedLines.map(lineNum => ({
+                range: new monaco.Range(lineNum, 1, lineNum, 1),
+                options: {
+                  isWholeLine: true,
+                  className: 'optimized-line-decoration',
+                }
+              }));
+
+              if (decorationsRef.current) {
+                if (typeof decorationsRef.current.clear === 'function') {
+                  decorationsRef.current.clear();
+                } else if (Array.isArray(decorationsRef.current)) {
+                  decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+                }
+              }
+
+              if (typeof editor.createDecorationsCollection === 'function') {
+                decorationsRef.current = editor.createDecorationsCollection(newDecorations);
+              } else {
+                decorationsRef.current = editor.deltaDecorations([], newDecorations);
+              }
+            }
+          }, 100);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to optimize code in editor:', err);
+    }
+  };
+
+  const completionRegistrationRef = useRef(null);
+  const lastRequestTimeRef = useRef(0);
+
+  const registerCopilot = (editor, monaco, file) => {
+    if (completionRegistrationRef.current) {
+      try {
+        completionRegistrationRef.current.deregister();
+      } catch (err) {
+        console.error('Error deregistering previous completion:', err);
+      }
+      completionRegistrationRef.current = null;
+    }
+
+    if (!editor || !monaco || !file) return;
+
+    const filename = file.split(/[/\\]/).pop() || 'index.js';
+    const language = file.endsWith('.json') ? 'json' :
+                     file.endsWith('.css') ? 'css' :
+                     file.endsWith('.html') ? 'html' :
+                     'javascript';
+
+    try {
+      completionRegistrationRef.current = registerCompletion(monaco, editor, {
+        language,
+        filename,
+        endpoint: window.location.origin + '/api/ai/code-completion',
+        trigger: 'onIdle',
+        triggerIf: () => {
+          if (!showSuggestionsRef.current) return false;
+          const now = Date.now();
+          return now - lastRequestTimeRef.current >= 8000;
+        },
+        onCompletionRequested: () => {
+          lastRequestTimeRef.current = Date.now();
+        }
+      });
+    } catch (err) {
+      console.error('Failed to register monacopilot inline completion:', err);
+    }
+  };
+
   const handleEditorDidMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       handleSave();
     });
+    registerCopilot(editor, monaco, selectedFile);
   };
+
+  useEffect(() => {
+    if (editorRef.current && monacoRef.current) {
+      registerCopilot(editorRef.current, monacoRef.current, selectedFile);
+    }
+    return () => {
+      if (completionRegistrationRef.current) {
+        try {
+          completionRegistrationRef.current.deregister();
+        } catch (err) {
+          console.error('Error during cleanup deregistration:', err);
+        }
+        completionRegistrationRef.current = null;
+      }
+    };
+  }, [selectedFile]);
 
   useEffect(() => {
     if (!sandbox || !socketRef || !socketRef.current || !terminalRef.current) return;
@@ -311,6 +443,12 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       style={{ transform: maximizedPanel ? 'none' : undefined }}
       className="flex-1 h-full overflow-hidden z-10 relative"
     >
+      <style dangerouslySetInnerHTML={{ __html: `
+        .optimized-line-decoration {
+          background: rgba(39, 201, 63, 0.12) !important;
+          border-left: 3.5px solid #27c93f !important;
+        }
+      ` }} />
       <PanelGroup orientation="vertical">
         <Panel defaultSize={60} minSize={30}>
           <motion.div
@@ -366,7 +504,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
               </div>
 
               {/* Center: Safari Unified Smart Address Bar & Preview Terminal Toggle */}
-              <div className="flex-1 max-w-[320px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
+              <div className="flex-1 max-w-[420px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
                 {!(activeTab === 'code' && maximizedPanel !== 'preview') ? (
                   <div className="flex-1 max-w-[220px]">
                     <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
@@ -421,16 +559,38 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   </button>
                 )}
 
-                {maximizedPanel === 'preview' && (
+                {maximizedPanel === 'preview' && selectedFile && (
                   <button
-                    onClick={() => setShowSuggestions(!showSuggestions)}
-                    className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${showSuggestions
-                      ? 'bg-primary text-on-primary border-primary hover:opacity-90 shadow-md'
+                    onClick={handleOptimizeCode}
+                    disabled={isOptimizing}
+                    className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${isOptimizing
+                      ? 'bg-primary/20 text-primary border-primary/20 cursor-not-allowed shadow-none'
                       : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
                       }`}
                   >
-                    <span className="material-symbols-outlined text-[12px]">lightbulb</span>
-                    <span>{showSuggestions ? 'Hide Suggestions' : 'Show Suggestions'}</span>
+                    <span className={`material-symbols-outlined text-[12px] ${isOptimizing ? 'animate-spin' : ''}`}>
+                      {isOptimizing ? 'progress_activity' : 'bolt'}
+                    </span>
+                    <span>{isOptimizing ? 'Optimizing...' : 'Optimize Code'}</span>
+                  </button>
+                )}
+
+                {selectedFile && (
+                  <button
+                    onClick={() => {
+                      const newValue = !showSuggestions;
+                      setShowSuggestions(newValue);
+                      showSuggestionsRef.current = newValue;
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 h-7 rounded border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[9px] font-bold font-label-caps cursor-pointer active:scale-95 transition-all select-none whitespace-nowrap shadow-sm"
+                    title={showSuggestions ? "Hide inline AI suggestions" : "Show inline AI suggestions"}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                      showSuggestions 
+                        ? 'bg-primary shadow-[0_0_6px_rgba(170,59,255,0.8)] animate-pulse' 
+                        : 'bg-outline-variant/50'
+                    }`} />
+                    <span>{showSuggestions ? 'Show Suggestions' : 'Hide Suggestions'}</span>
                   </button>
                 )}
               </div>
@@ -601,37 +761,71 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                 transition={{ duration: 0.15, ease: "easeOut" }}
                                 className="absolute left-0 mt-1.5 w-64 max-h-72 overflow-y-auto bg-[#181818]/95 border border-outline-variant/35 rounded-md shadow-2xl z-40 py-1 backdrop-blur-lg scrollbar-thin select-none"
                               >
-                                {files
-                                  .filter(path => {
-                                    const filename = path.split(/[/\\]/).pop().toLowerCase();
-                                    return filename !== 'dockerfile' && filename !== '.dockerignore';
-                                  })
-                                  .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true }))
-                                  .map(path => {
-                                    const isSelected = selectedFile === path;
+                                {(() => {
+                                  const groups = {};
+                                  files
+                                    .filter(path => {
+                                      const filename = path.split(/[/\\]/).pop().toLowerCase();
+                                      return filename !== 'dockerfile' && filename !== '.dockerignore';
+                                    })
+                                    .forEach(path => {
+                                      const normalizedPath = path.replace(/\\/g, '/');
+                                      const parts = normalizedPath.split('/');
+                                      const fileName = parts.pop();
+                                      const folderName = parts.join('/') || 'root';
+                                      if (!groups[folderName]) {
+                                        groups[folderName] = [];
+                                      }
+                                      groups[folderName].push({ fullPath: path, name: fileName });
+                                    });
+
+                                  const sortedFolders = Object.keys(groups).sort((a, b) => {
+                                    if (a === 'root') return -1;
+                                    if (b === 'root') return 1;
+                                    return a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true });
+                                  });
+
+                                  return sortedFolders.map(folderName => {
+                                    const folderFiles = groups[folderName].sort((a, b) => 
+                                      a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+                                    );
+
                                     return (
-                                      <div
-                                        key={path}
-                                        onClick={() => {
-                                          if (onSelectFile) onSelectFile(path);
-                                          setIsDropdownOpen(false);
-                                        }}
-                                        className={`flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${isSelected
-                                          ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-2.5'
-                                          : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
-                                          }`}
-                                      >
-                                        <div className="flex-shrink-0 flex items-center justify-center">
-                                          {getFileIcon(path)}
+                                      <div key={folderName} className="flex flex-col">
+                                        <div className="px-3 py-1 text-[8.5px] font-bold font-mono text-outline/40 uppercase tracking-widest bg-surface-container-high/15 flex items-center gap-1.5 select-none border-y border-outline-variant/10 first:border-t-0">
+                                          <FolderOpen className="w-2.5 h-2.5 text-primary/75 shrink-0" />
+                                          <span>{folderName === 'root' ? 'root' : folderName}</span>
                                         </div>
-                                        <span className="truncate flex-1 text-left">{path}</span>
-                                        {isSelected && (
-                                          <span className="material-symbols-outlined text-[12px] text-primary">check</span>
-                                        )}
+                                        <div className="flex flex-col">
+                                          {folderFiles.map(file => {
+                                            const isSelected = selectedFile === file.fullPath;
+                                            return (
+                                              <div
+                                                key={file.fullPath}
+                                                onClick={() => {
+                                                  if (onSelectFile) onSelectFile(file.fullPath);
+                                                  setIsDropdownOpen(false);
+                                                }}
+                                                className={`flex items-center gap-2 px-4 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${isSelected
+                                                  ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-3.5'
+                                                  : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
+                                                  }`}
+                                              >
+                                                <div className="flex-shrink-0 flex items-center justify-center">
+                                                  {getFileIcon(file.name)}
+                                                </div>
+                                                <span className="truncate flex-1 text-left">{file.name}</span>
+                                                {isSelected && (
+                                                  <span className="material-symbols-outlined text-[12px] text-primary">check</span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
                                       </div>
                                     );
-                                  })
-                                }
+                                  });
+                                })()}
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -678,13 +872,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                 horizontalScrollbarSize: 0,
                                 handleMouseWheel: true
                               },
-                              quickSuggestions: showSuggestions,
-                              inlineSuggest: {
-                                enabled: showSuggestions,
-                              },
-                              suggest: {
-                                preview: showSuggestions,
-                              },
+                              quickSuggestions: true,
                               minimap: {
                                 enabled: false,
                               },
@@ -805,13 +993,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                 horizontalScrollbarSize: 0,
                                 handleMouseWheel: true
                               },
-                              quickSuggestions: showSuggestions,
-                              inlineSuggest: {
-                                enabled: showSuggestions,
-                              },
-                              suggest: {
-                                preview: showSuggestions,
-                              },
+                              quickSuggestions: true,
                               minimap: {
                                 enabled: true,
                               }
@@ -942,3 +1124,54 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     </motion.main>
   );
 }
+
+const getDiffLines = (originalText, optimizedText) => {
+  if (!originalText) {
+    const optimizedLines = optimizedText.split('\n');
+    return Array.from({ length: optimizedLines.length }, (_, index) => index + 1);
+  }
+  if (!optimizedText) {
+    return [];
+  }
+
+  const originalLines = originalText.split('\n');
+  const optimizedLines = optimizedText.split('\n');
+  
+  const m = originalLines.length;
+  const n = optimizedLines.length;
+  
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (originalLines[i - 1].trim() === optimizedLines[j - 1].trim()) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  
+  const matchedOptimizedIndices = new Set();
+  let i = m, j = n;
+  while (i > 0 && j > 0) {
+    if (originalLines[i - 1].trim() === optimizedLines[j - 1].trim()) {
+      matchedOptimizedIndices.add(j - 1);
+      i--;
+      j--;
+    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+  
+  const optimizedLineNumbers = [];
+  for (let k = 0; k < n; k++) {
+    if (!matchedOptimizedIndices.has(k)) {
+      optimizedLineNumbers.push(k + 1);
+    }
+  }
+  
+  return optimizedLineNumbers;
+};
