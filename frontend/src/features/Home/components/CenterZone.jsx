@@ -167,12 +167,10 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     if (selectedFile) {
       setActiveTab('code');
     }
-    clearOptimizedDecorations();
   }, [selectedFile]);
 
   const handleEditorChange = (value) => {
     setEditorValue(value || '');
-    clearOptimizedDecorations();
   };
 
 
@@ -184,7 +182,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       const res = await fresh.saveFile(fresh.selectedFile, fresh.editorValue);
       if (res.success) {
         console.log('File saved successfully');
-        clearOptimizedDecorations();
       } else {
         alert(`Failed to save file: ${res.error}`);
       }
@@ -194,18 +191,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
-  const decorationsRef = useRef(null);
-
-  const clearOptimizedDecorations = () => {
-    if (decorationsRef.current) {
-      if (typeof decorationsRef.current.clear === 'function') {
-        decorationsRef.current.clear();
-      } else if (editorRef.current && Array.isArray(decorationsRef.current)) {
-        decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, []);
-      }
-      decorationsRef.current = null;
-    }
-  };
 
   const handleOptimizeCode = async () => {
     if (!selectedFile || isOptimizing) return;
@@ -218,41 +203,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       const cleanFilename = file.split(/[/\\]/).pop() || 'index.js';
 
       if (optimizeCode) {
-        const originalCode = editorValue;
         const res = await optimizeCode(editorValue, language, cleanFilename);
         if (res && res.success && res.optimizedCode) {
           setEditorValue(res.optimizedCode);
-
-          const optimizedLines = getDiffLines(originalCode, res.optimizedCode);
-          
-          setTimeout(() => {
-            if (editorRef.current && monacoRef.current && optimizedLines.length > 0) {
-              const monaco = monacoRef.current;
-              const editor = editorRef.current;
-              
-              const newDecorations = optimizedLines.map(lineNum => ({
-                range: new monaco.Range(lineNum, 1, lineNum, 1),
-                options: {
-                  isWholeLine: true,
-                  className: 'optimized-line-decoration',
-                }
-              }));
-
-              if (decorationsRef.current) {
-                if (typeof decorationsRef.current.clear === 'function') {
-                  decorationsRef.current.clear();
-                } else if (Array.isArray(decorationsRef.current)) {
-                  decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
-                }
-              }
-
-              if (typeof editor.createDecorationsCollection === 'function') {
-                decorationsRef.current = editor.createDecorationsCollection(newDecorations);
-              } else {
-                decorationsRef.current = editor.deltaDecorations([], newDecorations);
-              }
-            }
-          }, 100);
         }
       }
     } catch (err) {
@@ -443,12 +396,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       style={{ transform: maximizedPanel ? 'none' : undefined }}
       className="flex-1 h-full overflow-hidden z-10 relative"
     >
-      <style dangerouslySetInnerHTML={{ __html: `
-        .optimized-line-decoration {
-          background: rgba(39, 201, 63, 0.12) !important;
-          border-left: 3.5px solid #27c93f !important;
-        }
-      ` }} />
       <PanelGroup orientation="vertical">
         <Panel defaultSize={60} minSize={30}>
           <motion.div
@@ -1124,54 +1071,3 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     </motion.main>
   );
 }
-
-const getDiffLines = (originalText, optimizedText) => {
-  if (!originalText) {
-    const optimizedLines = optimizedText.split('\n');
-    return Array.from({ length: optimizedLines.length }, (_, index) => index + 1);
-  }
-  if (!optimizedText) {
-    return [];
-  }
-
-  const originalLines = originalText.split('\n');
-  const optimizedLines = optimizedText.split('\n');
-  
-  const m = originalLines.length;
-  const n = optimizedLines.length;
-  
-  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (originalLines[i - 1].trim() === optimizedLines[j - 1].trim()) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-      }
-    }
-  }
-  
-  const matchedOptimizedIndices = new Set();
-  let i = m, j = n;
-  while (i > 0 && j > 0) {
-    if (originalLines[i - 1].trim() === optimizedLines[j - 1].trim()) {
-      matchedOptimizedIndices.add(j - 1);
-      i--;
-      j--;
-    } else if (dp[i - 1][j] >= dp[i][j - 1]) {
-      i--;
-    } else {
-      j--;
-    }
-  }
-  
-  const optimizedLineNumbers = [];
-  for (let k = 0; k < n; k++) {
-    if (!matchedOptimizedIndices.has(k)) {
-      optimizedLineNumbers.push(k + 1);
-    }
-  }
-  
-  return optimizedLineNumbers;
-};

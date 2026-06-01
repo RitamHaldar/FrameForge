@@ -6,7 +6,7 @@ FrameForge is an ultra-premium, AI-orchestrated cloud IDE and sandboxing environ
 
 ## 🏗️ Architecture Overview
 
-The system is designed as a highly scalable microservice infrastructure running inside a Kubernetes cluster, developed with local multi-container syncing using Skaffold.
+The system is designed as a highly scalable microservice infrastructure running inside a Kubernetes cluster, developed with local multi-container syncing using Skaffold. The authentication layer is decoupled from notifications using an asynchronous RabbitMQ message queue.
 
 ```
                   ┌──────────────────────┐
@@ -21,16 +21,30 @@ The system is designed as a highly scalable microservice infrastructure running 
                              │
             ┌────────────────┴────────────────┐
             ▼                                 ▼
-┌──────────────────────┐           ┌──────────────────────┐
-│   Sandbox Service    │           │    AI-Worker Agent   │
-│ (K8s Pod Provisioner)│           │ (LangChain Orchestr) │
-└──────────┬───────────┘           └──────────────────────┘
-           │
-           ▼ (Spawns dynamically)
-┌──────────────────────┐
-│  Isolated Sandbox    │
-│  (Vite + Node Agent) │
-└──────────────────────┘
+ ┌──────────────────────┐           ┌──────────────────────┐
+ │   Sandbox Service    │           │    AI-Worker Agent   │
+ │ (K8s Pod Provisioner)│           │ (LangChain Orchestr) │
+ └──────────┬───────────┘           └──────────┬───────────┘
+            │                                  │
+            ▼ (Spawns dynamically)             ▼
+ ┌──────────────────────┐           ┌──────────────────────┐
+ │  Isolated Sandbox    │           │     Auth Service     │ (JWT Sessions & Google OAuth)
+ │  (Vite + Node Agent) │           └──────────┬───────────┘
+ └──────────┬───────────┘                      │ (Produces OTP Queue Messages)
+                                               ▼
+                                    ┌──────────────────────┐
+                                    │   RabbitMQ Broker    │ (CloudAMQP Queue Pipeline)
+                                    └──────────┬───────────┘
+                                               │ (AUTH_NOTIFICATION_QUEUE)
+                                               ▼ (Consumes message async)
+                                    ┌──────────────────────┐
+                                    │ Notification Service │ (Vetted Alpine Node Runtime)
+                                    └──────────┬───────────┘
+                                               │ (Gmail API integration)
+                                               ▼
+                                    ┌──────────────────────┐
+                                    │      Gmail API       │ (Premium Inline HTML Emails)
+                                    └──────────┬───────────┘
 ```
 
 ---
@@ -40,14 +54,25 @@ The system is designed as a highly scalable microservice infrastructure running 
 ```bash
 ├── .git/                 # Git repository history
 ├── ai-worker/            # Node.js Express service for AI orchestration
-├── auth/                 # Node.js Express service for identity management & social auth
+├── auth/                 # Node.js Express service for identity management, Google OAuth & OTP creation
+├── notification/         # Node.js Express consumer service for sending email alerts
+│   ├── src/
+│   │   ├── config/       # Queue definitions & broker connection configurations
+│   │   ├── services/     # Gmail OAuth2 mailer integrations
+│   │   └── template/     # Premium Inline HTML/CSS verification email templates
+│   ├── server.js         # Entrypoint for running the notification worker
+│   └── dockerfile        # Lightweight alpine execution environment
 ├── frontend/             # Core React & Vite frontend client SPA
+│   ├── src/
+│   │   ├── features/
+│   │   │   ├── Auth/     # State-bound Login, Register, and Verify OTP screens
+│   │   │   └── Home/     # Glassmorphic Workspace Canvas, File Explorers & Terminal
+│   └── index.html        # Smart viewport & loaded design systems
 ├── k8s/                  # Kubernetes configuration manifests
-├── Sandbox/              # Isolated developer workspace services
-│   ├── agent/            # Node.js socket agent executed inside sandbox pods
-│   ├── router/           # WebSocket and traffic router to target sandboxes
-│   ├── service/          # API layer controlling pod creations and deletions
-│   └── template/         # React/Vite/Tailwind boilerplate for new sandboxes
+│   ├── secrets.yml       # Ingress, Google Credentials, and database secret keys
+│   ├── auth-*.yml        # Auth service deployment and services config
+│   ├── notification-*.yml# Notification service deployment and services config
+│   └── ...
 └── skaffold.yml          # Skaffold orchestration pipeline for local development
 ```
 
@@ -61,15 +86,17 @@ The system is designed as a highly scalable microservice infrastructure running 
 - **Routing**: React Router 7 (`react-router` 7.x)
 - **Animations**: Framer Motion 12 (spring dynamics) & GSAP (timeline choreography)
 - **Scroll Kinetics**: Lenis (smooth scrolling)
-- **Editor**: `@monaco-editor/react` (VS Code core engine integration)
-- **Terminal Client**: `xterm` & `xterm-addon-fit`
+- **Editor**: `@monaco-editor/react` (Monaco VS Code core engine integration)
+- **Terminal Client**: `xterm` & `xterm-addon-fit` (with glowing scanline CRT visual overlays)
 - **Networking**: `socket.io-client` & `axios`
 - **Styling**: TailwindCSS 4.0
 
-### Identity & Authentication
-- **Runtime**: Node.js v18+ (ES modules enabled)
+### Identity, Auth & Queues
+- **Runtime**: Node.js v18+ & Node.js v20 (Alpine containers)
 - **Server Framework**: Express.js (v5.x)
 - **Database & ORM**: MongoDB via Mongoose
+- **Message Broker**: RabbitMQ via `amqplib` (CloudAMQP managed layer)
+- **Email Delivery**: Google API Client (`googleapis` v173) for OAuth2 secure mail transport
 - **Authentication**: Passport.js (local & Google OAuth 2.0 social federation)
 - **Security**: `bcryptjs` (password hashing) & `jsonwebtoken` (session JWTs)
 
@@ -80,9 +107,20 @@ The system is designed as a highly scalable microservice infrastructure running 
 
 ### Sandbox Infrastructure
 - **Deployments**: Kubernetes (Local / Cloud)
-- **Orchestration Tool**: Skaffold
+- **Orchestration Tool**: Skaffold (hot reloading container syncing)
 - **Containerization**: Docker
 - **Sandbox Agents**: Node.js, Socket.IO 4 & node-pty (interactive terminals)
+
+---
+
+## 🔒 Security & Verification Pipeline (OTP)
+
+FrameForge implements a secure, asynchronous sign-up and validation pipeline:
+1. **Request Initiation**: Upon registration via `RegisterForm`, a 6-digit cryptographic OTP is generated by the `auth` controller and saved on the User model.
+2. **Queueing**: The `auth` service writes a message containing the recipient and the OTP code to the `AUTH_NOTIFICATION_QUEUE` on CloudAMQP.
+3. **Consumption**: The `notification` service consumes the message asynchronously, preventing signup delays for the end-user.
+4. **Email Dispatch**: The `notification` service compiles our highly-polished, dark-mode matching email template (`emailTemplate.js`) and transmits it securely via the Gmail OAuth2 API.
+5. **Two-Way Binding Verification**: The client is transitioned automatically to our custom **Verify OTP Page**, which provides individual focused inputs with auto-tabbing, clipboard paste support, and real-time validation via `useAuth` hook. On successful submission, the account is activated and the user is routed to `/dashboard`.
 
 ---
 
@@ -142,7 +180,3 @@ npm run dev
 
 The application will be accessible at: `http://localhost:5173`.
 
----
-
-## 🔒 License
-Licensed under the ISC License. © 2026 FrameForge OS. All rights reserved.

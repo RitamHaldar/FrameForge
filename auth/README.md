@@ -10,11 +10,13 @@ The Authentication Service is a secure, lightweight identity management and auth
 - **Server Framework**: Express.js (v5.x)
 - **Database & ORM**: MongoDB via Mongoose (`mongoose`)
 - **Authentication**: Passport.js (`passport`, `passport-google-oauth20` for social federation)
+- **Message Broker & Queue**: RabbitMQ via `amqplib` (publishes email OTP requests to `AUTH_NOTIFICATION_QUEUE` on CloudAMQP)
 - **Security & Session Management**: 
   - `bcryptjs` for secure password hashing (10-round salt)
   - `jsonwebtoken` for issuing stateless secure JWTs (1-day expiration)
   - `cookie-parser` for reading secure, HTTP-only authentication cookies
 - **Logger**: Morgan (`morgan`) for structured HTTP request logging in development
+
 
 ---
 
@@ -25,9 +27,10 @@ The Authentication Service is a secure, lightweight identity management and auth
 │   ├── config/             # Config loader, database connection & passport strategy setups
 │   │   ├── config.js       # Environment variable aggregation
 │   │   ├── db.js           # Mongoose MongoDB connection handler
-│   │   └── passport.js     # Google OAuth 2.0 Strategy initialization
+│   │   ├── passport.js     # Google OAuth 2.0 Strategy initialization
+│   │   └── queue.js        # RabbitMQ client connection setup & queue message publishing helper
 │   ├── controllers/        # REST Route controllers
-│   │   └── auth.controller.js # Local Register/Login & Google OAuth callbacks
+│   │   └── auth.controller.js # Local Register/Login, Google OAuth, OTP verification & get-profile callbacks
 │   ├── models/             # Mongoose Database schemas
 │   │   └── user.model.js   # User schema, password hashing middleware & verification checks
 │   ├── routes/             # API Router definitions
@@ -45,10 +48,12 @@ The Authentication Service is a secure, lightweight identity management and auth
 | HTTP Method | Route | Access | Description |
 | :--- | :--- | :--- | :--- |
 | **GET** | `/api/auth/healthz` | Public | Liveness/readiness check returning service status. |
-| **POST** | `/api/auth/register` | Public | Registers a new user. Hashes password, saves to DB, sets a secure JWT cookie. |
+| **POST** | `/api/auth/register` | Public | Registers a new user. Sends OTP via message queue, hashes password, saves to DB, sets a secure JWT cookie. |
 | **POST** | `/api/auth/login` | Public | Authenticates credentials. Validates password and sets a secure JWT cookie. |
+| **POST** | `/api/auth/verify-otp`| Protected | Verifies the 6-digit OTP code against the database. Sets `isVerified: true` and issues updated secure JWT cookie. |
+| **GET** | `/api/auth/get-me` | Protected | Returns the current user profile (username, avatar url). |
 | **GET** | `/api/auth/google` | Public | Redirects user to Google's consent screen for OAuth 2.0 login. |
-| **GET** | `/api/auth/google/callback` | Public | Google callback handler. Registers/logs in user and redirects to frontend. |
+| **GET** | `/api/auth/google/callback`| Public | Google callback handler. Registers/logs in user and redirects to frontend. |
 
 ---
 
@@ -62,6 +67,7 @@ GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=GOCSPX-your-google-client-secret
 GOOGLE_CALLBACK_URL=http://localhost:3000/api/auth/google/callback
 JWT_SECRET=your-jwt-high-entropy-secret
+CLOUD_AMQP_URL=amqps://your-rabbitmq-cloudamqp-instance-url
 ```
 
 ---

@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { GoogleAuth, Login, Register } from "../controllers/auth.controller.js";
+import { GoogleAuth, GetMe, Login, Register, VerifyOtp } from "../controllers/auth.controller.js";
 import passport from "passport";
+import { authMiddleware } from "../middleware/auth.middleware.js"
 
 /**
  * Express router to mount authentication related routes.
@@ -42,5 +43,18 @@ authRouter.get("/google/callback", passport.authenticate("google", {
     session: false
 }), GoogleAuth)
 
+/**
+ * @route POST /api/auth/verify-otp
+ * @desc Verifies the OTP sent to the user for email verification
+ * @access Public
+ */
+authRouter.post("/verify-otp", authMiddleware, VerifyOtp);
+
+/**
+ * @route GET /api/auth/get-me
+ * @desc Gets the profile of the currently logged-in user
+ * @access Public
+ */
+authRouter.get("/get-me", authMiddleware, GetMe);
 
 export default authRouter;

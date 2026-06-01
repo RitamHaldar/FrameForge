@@ -45,6 +45,13 @@ build:
       sync:
         infer:
           - "src/**"
+    - image: notification
+      context: notification
+      sync:
+        infer:
+          - "src/**"
+      docker:
+        dockerfile: dockerfile
 
 manifests:
   rawYaml:

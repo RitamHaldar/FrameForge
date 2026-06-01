@@ -6,4 +6,5 @@ export const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     callbackURL: process.env.GOOGLE_CALLBACK_URL || "",
     jwtSecret: process.env.JWT_SECRET || "",
+    cloudAmqpUrl: process.env.CLOUD_AMQP_URL || ""
 }

@@ -25,16 +25,17 @@ export async function Register(req, res) {
     if (existingUser) {
         return res.status(400).json({ message: "User already exists" });
     }
-
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await sendOtpforVerification({ to: email, otp });
     const user = await User.create({
         username,
         email,
         password,
-        isVerified: true
+        otp
     });
-    const token = jwt.sign({ id: user._id }, config.jwtSecret, { expiresIn: "1d" })
+    const token = jwt.sign({ id: user._id, avatar: user.avatar }, config.jwtSecret, { expiresIn: "1d" })
     res.cookie("token", token, { httpOnly: true, secure: true })
-    return res.status(200).json({ message: "User registered successfully" });
+    return res.status(200).json({ message: "Otp Sent successfully Please Verify your email", user: { username: user.username, avatar: user.avatar } });
 
 }
 /**
@@ -69,7 +70,7 @@ export async function Login(req, res) {
 
     const token = jwt.sign({ id: user._id }, config.jwtSecret, { expiresIn: "1d" })
     res.cookie("token", token, { httpOnly: true, secure: true })
-    return res.status(200).json({ message: "User logged in successfully" });
+    return res.status(200).json({ message: "User logged in successfully", user: { username: user.username, avatar: user.avatar } });
 }
 
 /**
@@ -106,4 +107,52 @@ export async function GoogleAuth(req, res) {
     const token = jwt.sign({ id: user._id }, config.jwtSecret, { expiresIn: "1d" })
     res.cookie("token", token, { httpOnly: true, secure: true })
     res.redirect("http://localhost:5173")
+}
+
+/**
+ * Verifies the OTP sent to the user for email verification.
+ * Checks if the OTP matches the stored OTP and if it has expired.
+ * 
+ * @async
+ * @function VerifyOtp
+ * @param {import("express").Request} req - Express request object containing otp in req.body.
+ * @param {import("express").Response} res - Express response object.
+ * @returns {Promise<import("express").Response>} Express response.
+ */
+export async function VerifyOtp(req, res) {
+    const { id } = req.user;
+    const { otp } = req.body;
+    if (!otp) {
+        return res.status(400).json({ message: "OTP is required" });
+    }
+    const user = await User.findById(id);
+    if (!user) {
+        return res.status(400).json({ message: "User not found" });
+    }
+    if (user.otp !== otp) {
+        return res.status(400).json({ message: "Invalid OTP" });
+    }
+    user.isVerified = true;
+    user.otp = "null";
+    await user.save();
+    const token = jwt.sign({ id: user._id, avatar: user.avatar }, config.jwtSecret, { expiresIn: "1d" })
+    res.cookie("token", token, { httpOnly: true, secure: true })
+    return res.status(200).json({ message: "User verified successfully", user: { username: user.username, avatar: user.avatar } });
+}
+
+/**
+ * Gets the profile of the currently logged-in user.
+ * @async
+ * @function GetMe
+ * @param {import("express").Request} req - Express request object containing authenticated user in req.user.
+ * @param {import("express").Response} res - Express response object.
+ * @returns {Promise<import("express").Response>} Express response.
+ */
+export async function GetMe(req, res) {
+    const { id } = req.user;
+    const user = await User.findById(id);
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ message: "User found successfully", user: {username: user.username, avatar: user.avatar} });
 }
