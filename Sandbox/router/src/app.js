@@ -4,6 +4,7 @@ import morgan from "morgan";
 import cors from "cors";
 import http from "http";
 import { createProxyServer } from "httpxy";
+import { refreshTTL } from "./config/redis.js";
 
 const app = express();
 app.use(morgan("combined"));
@@ -46,7 +47,7 @@ wsProxy.on('error', (err, req, socket) => {
     console.error('WS proxy error:', err.message);
     socket?.destroy();
 });
-app.use((req, res, next) => {
+app.use(async(req, res, next) => {
     const host = req.headers.host;
 
     const sandboxId = host.split('.')[0];
@@ -54,6 +55,7 @@ app.use((req, res, next) => {
     if (!sandboxId) {
         return res.status(404).send("Sandbox not found");
     }
+    await refreshTTL(sandboxId);
     if (host.split('.')[1] == "agent") {
         return addAgentProxy(sandboxId)(req, res, next)
     }

@@ -58,3 +58,33 @@ Skaffold coordinates each Dockerfile and mounts code-sync points:
 - Changes inside `/Sandbox/service/src/**` are dynamically synchronized and restarted on the K8s pod.
 - Changes inside `/Sandbox/router/src/**` are synced and re-executed instantly.
 - Changes inside `/Sandbox/agent/src/**` sync into running agents seamlessly.
+
+---
+
+## 🔌 Sandbox API Documentation
+
+The Sandbox Service exposes the following endpoints (all routes are prefixed with `/api/sandbox`):
+
+| HTTP Method | Route | Access | Description |
+| :--- | :--- | :--- | :--- |
+| **GET** | `/health` | Public | Liveness/readiness check returning service health status. |
+| **POST** | `/create` | Protected | Creates a new user project database entry with the given title. |
+| **POST** | `/start` | Protected | Spins up an isolated Kubernetes Pod and ClusterIP Service for the project and returns a unique preview URL. |
+| **GET** | `/projects` | Protected | Retrieves all active projects belonging to the logged-in user. |
+
+---
+
+## 📖 Code Documentation & JSDoc Standards
+
+All routes, controllers, middleware, and Kubernetes helper functions in this microservice are documented using standard JSDoc blocks to enforce type safety and clarity. When extending the service, ensure JSDoc is present in the following format:
+
+```javascript
+/**
+ * Short description of function or route.
+ * 
+ * @route [Method] [Endpoint] (if Express route)
+ * @param {Type} paramName - Parameter description.
+ * @returns {Type} Return value description.
+ */
+```
+

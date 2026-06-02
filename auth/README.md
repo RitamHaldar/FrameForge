@@ -99,3 +99,20 @@ Skaffold handles rebuilding and hot-syncing changes inside the cluster. Just tri
 skaffold dev
 ```
 Skaffold listens to file changes inside `auth/src/**` and automatically syncs them into the running container without trigger-rebuilding the full Docker image.
+
+---
+
+## 📖 Code Documentation & JSDoc Standards
+
+All routes, controllers, middleware, and helper functions in this microservice are documented using standard JSDoc blocks to enforce type safety and clarity. When extending the service, ensure JSDoc is present in the following format:
+
+```javascript
+/**
+ * Short description of function or route.
+ * 
+ * @route [Method] [Endpoint] (if Express route)
+ * @param {Type} paramName - Parameter description.
+ * @returns {Type} Return value description.
+ */
+```
+

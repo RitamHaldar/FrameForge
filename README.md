@@ -180,3 +180,15 @@ npm run dev
 
 The application will be accessible at: `http://localhost:5173`.
 
+---
+
+## 📖 Code Documentation Standards
+
+To ensure clean, maintainable, and self-documenting codebases across all microservices, FrameForge strictly adheres to standard **JSDoc** schemas for routes, middlewares, controllers, and Kubernetes helper utilities:
+
+*   **API Routes**: Every route is documented with `@route`, request `@param` types, and response `@returns` formats.
+*   **Helper Utilities**: Functions mapping Kubernetes Pod and Service configurations are explicitly documented with parameters and API response structures.
+
+When extending or introducing new services, please follow the uniform JSDoc template defined in each sub-package's README.
+
+

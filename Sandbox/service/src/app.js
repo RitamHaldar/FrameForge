@@ -1,15 +1,22 @@
 import express from 'express';
 import morgan from 'morgan';
-import { v7 as uuid } from 'uuid'
-import { createPod } from './kubernetes/pod.js';
-import { createService } from './kubernetes/service.js';
-
+import sandboxRouter from './routes/sandbox.routes.js';
+import cookieParser from 'cookie-parser';
 const app = express();
 
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
+/**
+ * Health check route to verify Sandbox API service availability.
+ * 
+ * @route GET /api/sandbox/health
+ * @param {import("express").Request} req - Express request object.
+ * @param {import("express").Response} res - Express response object.
+ * @returns {import("express").Response} Express response containing the status.
+ */
 app.get("/api/sandbox/health", (req, res) => {
     res.status(200).json({
         message: "Sandbox Api is Running",
@@ -17,20 +24,13 @@ app.get("/api/sandbox/health", (req, res) => {
     })
 })
 
-app.post("/api/sandbox/start", async (req, res) => {
-    const sandboxId = uuid();
+/**
+ * Main router for all sandbox-related API endpoints.
+ * Mounted on /api/sandbox.
+ * 
+ * @namespace sandboxRouter
+ */
 
-    await Promise.all([
-        createPod(sandboxId),
-        createService(sandboxId)
-    ])
-
-    return res.status(200).json({
-        success: true,
-        message: "Sandbox created successfully",
-        sandboxId,
-        previewUrl: `http://${sandboxId}.preview.localhost`
-    })
-})
+app.use("/api/sandbox", sandboxRouter)
 
 export default app;

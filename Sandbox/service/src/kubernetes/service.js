@@ -1,5 +1,11 @@
 import { k8sApi } from "./config.js";
 
+/**
+ * Creates a Kubernetes Service to expose the sandbox container ports.
+ * 
+ * @param {string} sandboxId - The unique ID of the sandbox.
+ * @returns {Promise<object>} The Kubernetes API response for the created Service.
+ */
 export async function createService(sandboxId) {
     const serviceManifest = {
         "metadata": {
@@ -34,6 +40,20 @@ export async function createService(sandboxId) {
     const response = await k8sApi.createNamespacedService({
         namespace: "default",
         body: serviceManifest
+    })
+    return response
+}
+
+/**
+ * Deletes the Kubernetes Service associated with a sandbox.
+ * 
+ * @param {string} sandboxId - The unique ID of the sandbox.
+ * @returns {Promise<object>} The Kubernetes API response for the deleted Service.
+ */
+export async function deleteService(sandboxId) {
+    const response = await k8sApi.deleteNamespacedService({
+        name: `sandbox-service-${sandboxId}`,
+        namespace: "default"
     })
     return response
 }
