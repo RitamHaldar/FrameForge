@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { startSandbox, invokeAi, listFiles, readFileContent, updateFileContent, createFile, deleteFile, optimizeCode } from '../service/api';
+import { startSandbox, invokeAi, listFiles, readFileContent, updateFileContent, createFile, deleteFile, optimizeCode, getUserProjects, createProject } from '../service/api';
 import { useDispatch } from 'react-redux';
 import { addToast } from '../slices/toastSlice';
 
@@ -14,6 +14,8 @@ export const useHome = () => {
             return null;
         }
     });
+    const [projects, setProjects] = useState([]);
+    const [isLoadingProjects, setIsLoadingProjects] = useState(false);
     const [files, setFiles] = useState([]);
     const [aiEvents, setAiEvents] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -34,6 +36,40 @@ export const useHome = () => {
             window.localStorage.removeItem('sandbox');
         }
     }, [sandbox]);
+
+    const fetchProjects = async () => {
+        setIsLoadingProjects(true);
+        try {
+            const res = await getUserProjects();
+            if (res && res.success && Array.isArray(res.projects)) {
+                setProjects(res.projects);
+            }
+        } catch (error) {
+            console.error('Failed to fetch projects', error);
+            dispatch(addToast({ message: 'Failed to fetch projects', type: 'error' }));
+        } finally {
+            setIsLoadingProjects(false);
+        }
+    };
+
+    const createNewProject = async (title) => {
+        try {
+            const res = await createProject(title);
+            if (res && res.success && res.project) {
+                dispatch(addToast({ message: 'Project created successfully!', type: 'success' }));
+                await fetchProjects();
+                return { success: true, project: res.project };
+            } else {
+                dispatch(addToast({ message: res?.message || 'Failed to create project', type: 'error' }));
+                return { success: false, error: res?.message || 'Failed to create project' };
+            }
+        } catch (error) {
+            console.error('Failed to create project', error);
+            const errMsg = error.response?.data?.message || error.message;
+            dispatch(addToast({ message: errMsg, type: 'error' }));
+            return { success: false, error: errMsg };
+        }
+    };
 
     const fetchFiles = async (sandboxId) => {
         try {
@@ -182,11 +218,16 @@ export const useHome = () => {
         }
     };
 
-    const initWorkspace = async (forceNew = false) => {
+    const initWorkspace = async (projectId = null, forceNew = false) => {
         try {
             let data = sandbox;
-            if (!data || forceNew) {
-                data = await startSandbox();
+            if (!data || forceNew || projectId) {
+                const pid = projectId || (data ? data.projectId : null);
+                if (!pid) {
+                    console.error("Cannot initialize workspace without a project ID");
+                    return;
+                }
+                data = await startSandbox(pid);
                 setSandbox(data);
             }
 
@@ -313,6 +354,10 @@ export const useHome = () => {
 
     return {
         sandbox,
+        projects,
+        isLoadingProjects,
+        fetchProjects,
+        createNewProject,
         files,
         aiEvents,
         isGenerating,

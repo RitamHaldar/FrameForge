@@ -2,10 +2,6 @@ import axios from 'axios';
 
 const API_BASE = '/api';
 
-export const startSandbox = async () => {
-  const response = await axios.post(`${API_BASE}/sandbox/start`);
-  return response.data;
-};
 
 export const invokeAi = async (message, projectId, agentNo, onEvent, signal) => {
   try {
@@ -127,3 +123,19 @@ export const optimizeCode = async (code, language, filename) => {
   });
   return response.data;
 };
+
+export const getUserProjects = async () => {
+  const response = await axios.get(`${API_BASE}/sandbox/projects`);
+  return response.data;
+};
+
+export const createProject = async (title) => {
+  const response = await axios.post(`${API_BASE}/sandbox/create`, { title });
+  return response.data;
+};
+
+export const startSandbox = async (projectId) => {
+  const response = await axios.post(`${API_BASE}/sandbox/start`, { projectId });
+  return response.data;
+};
+

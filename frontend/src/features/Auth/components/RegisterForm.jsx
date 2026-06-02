@@ -4,6 +4,7 @@ import { Mail, Lock, User, UserPlus } from 'lucide-react';
 import AnimatedInput from './AnimatedInput';
 import SocialLogin from './SocialLogin';
 import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router';
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -24,6 +25,7 @@ const itemVariants = {
 
 export default function RegisterForm({ onToggleForm }) {
   const { registerUser } = useAuth();
+  const navigate = useNavigate();
   const [formValues, setFormValues] = useState({ username: '', email: '', password: '' });
 
   const handleChange = (e) => {
@@ -33,7 +35,10 @@ export default function RegisterForm({ onToggleForm }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await registerUser({ username: formValues.username, email: formValues.email, password: formValues.password });
+    const success = await registerUser({ username: formValues.username, email: formValues.email, password: formValues.password });
+    if (success) {
+      navigate('/verify-otp');
+    }
   };
 
   const handleGoogleLogin = () => {

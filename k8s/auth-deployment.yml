@@ -38,7 +38,7 @@ spec:
           initialDelaySeconds: 30
           timeoutSeconds: 10
         env:
-        - name: MONGO_URI 
+        - name: MONGO_URL
           valueFrom:
             secretKeyRef:
               name: database

@@ -81,3 +81,14 @@ The server launches on `http://localhost:5173`.
 - The `useAuth` hook integrates React Router's `useNavigate` to automatically direct unverified sign-ins and new registrations to `/verify-otp`.
 - The **Verify OTP Screen** features smooth entrance animations, focus-management (auto-tabbing between 6 fields), full paste detection, validation handling, and loads users to their workspace `/dashboard` automatically on success.
 
+## 🎛️ Workspace Menu Sidebar
+- Replaces the static `READY` status text in `AgentWorkspace.jsx` top bar with a premium `Menu` toggle button.
+- Slides a high-fidelity glassmorphic drawer from the right containing the user's name, avatar image, and session controls.
+- Fetches all user projects from database and showcases them in an active switcher list; selecting any card dynamically restarts the active sandbox environment (`initWorkspace(projectId, true)`).
+- Fixes Google accounts cross-origin avatar load failures by adding `referrerPolicy="no-referrer"` to the `<img />` tags, coupled with fallback listeners for image failures (`imageError`).
+
+## 📖 Animated Documentation Hub (`/docs`)
+- A beautiful, searchable, and responsive page detailing platform features, core cloud architecture, container pods, and backend REST APIs.
+- Features smooth scrolling using **Lenis** and fluid entrance/active-indicator animations using **Framer Motion**.
+- Fully accessible from the Landing Page navbar and hero CTA button.
+

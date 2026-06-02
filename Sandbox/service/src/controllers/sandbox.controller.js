@@ -1,6 +1,6 @@
 import { v7 as uuid } from 'uuid'
-import { createPod } from './kubernetes/pod.js';
-import { createService } from './kubernetes/service.js';
+import { createPod } from '../kubernetes/pod.js';
+import { createService } from '../kubernetes/service.js';
 import { ProjectModel } from '../models/project.model.js';
 import { createSandboxKey } from '../config/redis.js';
 

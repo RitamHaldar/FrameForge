@@ -33,8 +33,6 @@ export async function Register(req, res) {
         password,
         otp
     });
-    const token = jwt.sign({ id: user._id, avatar: user.avatar }, config.jwtSecret, { expiresIn: "1d" })
-    res.cookie("token", token, { httpOnly: true, secure: true })
     return res.status(200).json({ message: "Otp Sent successfully Please Verify your email", user: { username: user.username, avatar: user.avatar } });
 
 }
@@ -155,4 +153,17 @@ export async function GetMe(req, res) {
         return res.status(404).json({ message: "User not found" });
     }
     return res.status(200).json({ message: "User found successfully", user: {username: user.username, avatar: user.avatar} });
+}
+
+/**
+ * Logs out the currently authenticated user by clearing the JWT cookie.
+ * @async
+ * @function Logout
+ * @param {import("express").Request} req - Express request object.
+ * @param {import("express").Response} res - Express response object.
+ * @returns {Promise<import("express").Response>} Express response.
+ */
+export async function Logout(req, res) {
+    res.clearCookie("token");
+    return res.status(200).json({ message: "Logged out successfully" });
 }

@@ -4,7 +4,10 @@ import Sidebar from '../components/Sidebar';
 import CenterZone from '../components/CenterZone';
 import AgentWorkspace from '../components/AgentWorkspace';
 import Toast from '../components/Toast';
+import MenuSidebar from '../components/MenuSidebar';
 import { useHome } from '../Hooks/useHome';
+import { useSelector } from 'react-redux';
+import { useAuth } from '../../Auth/hooks/useAuth';
 
 const HorizontalResizeHandle = ({ disabled }) => (
   <PanelResizeHandle
@@ -18,6 +21,10 @@ const HorizontalResizeHandle = ({ disabled }) => (
 export default function DashboardPage() {
   const homeState = useHome();
   const [maximizedPanel, setMaximizedPanel] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const { user, avatar } = useSelector((state) => state.auth);
+  const { logoutUser } = useAuth();
 
   useEffect(() => {
     homeState.initWorkspace();
@@ -111,9 +118,22 @@ export default function DashboardPage() {
               aiEvents={homeState.aiEvents}
               isGenerating={homeState.isGenerating}
               sendAiMessage={homeState.sendAiMessage}
+              onMenuClick={() => setIsMenuOpen(true)}
             />
           </Panel>
         </PanelGroup>
+        <MenuSidebar
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          user={user}
+          avatar={avatar}
+          projects={homeState.projects}
+          isLoadingProjects={homeState.isLoadingProjects}
+          fetchProjects={homeState.fetchProjects}
+          currentProjectId={homeState.sandbox?.projectId}
+          onSelectProject={async (projectId) => await homeState.initWorkspace(projectId, true)}
+          onLogout={logoutUser}
+        />
       </div>
     </div>
   );

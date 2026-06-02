@@ -52,6 +52,7 @@ The Authentication Service is a secure, lightweight identity management and auth
 | **POST** | `/api/auth/login` | Public | Authenticates credentials. Validates password and sets a secure JWT cookie. |
 | **POST** | `/api/auth/verify-otp`| Protected | Verifies the 6-digit OTP code against the database. Sets `isVerified: true` and issues updated secure JWT cookie. |
 | **GET** | `/api/auth/get-me` | Protected | Returns the current user profile (username, avatar url). |
+| **POST** | `/api/auth/logout` | Public | Logs out the current user by clearing the JWT token cookie. |
 | **GET** | `/api/auth/google` | Public | Redirects user to Google's consent screen for OAuth 2.0 login. |
 | **GET** | `/api/auth/google/callback`| Public | Google callback handler. Registers/logs in user and redirects to frontend. |
 

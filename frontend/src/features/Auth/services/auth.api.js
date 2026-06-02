@@ -17,3 +17,6 @@ export const login = async (data) => {
 export const getMe = async () => {
     return await axiosIntance.get("/get-me");
 }
+export const logout = async () => {
+    return await axiosIntance.post("/logout");
+}

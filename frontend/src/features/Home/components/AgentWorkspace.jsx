@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
-import { Sparkles, Cpu, ChevronDown } from 'lucide-react';
+import { Sparkles, Cpu, ChevronDown, Menu } from 'lucide-react';
 
 const models = [
   { id: '1', name: 'Pro', description: 'Deep & Exhaustive Reasoning' },
@@ -180,7 +180,7 @@ function EventItem({ event, itemVariants, isLatest }) {
   );
 }
 
-export default function AgentWorkspace({ aiEvents = [], isGenerating = false, sendAiMessage, stopAiResponse }) {
+export default function AgentWorkspace({ aiEvents = [], isGenerating = false, sendAiMessage, stopAiResponse, onMenuClick }) {
   const scrollRef = useRef(null);
   const contentRef = useRef(null);
   const lenisRef = useRef(null);
@@ -253,19 +253,20 @@ export default function AgentWorkspace({ aiEvents = [], isGenerating = false, se
           <h2 className="font-display-lg text-[14px] font-bold text-white tracking-wide">Forge Engine</h2>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-high border border-outline-variant/40">
-            {isGenerating ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-                <span className="font-label-caps text-[10px] text-primary">GENERATING</span>
-              </>
-            ) : (
-              <>
-                <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
-                <span className="font-label-caps text-[10px] text-on-surface-variant">READY</span>
-              </>
-            )}
-          </div>
+          {isGenerating ? (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-container-high border border-outline-variant/40 mr-1 select-none">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+              <span className="font-label-caps text-[10px] text-primary">GENERATING</span>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={onMenuClick}
+            className="flex items-center justify-center p-1.5 rounded-lg bg-surface-container-high border border-outline-variant/40 hover:border-primary/50 text-on-surface-variant hover:text-white transition-all duration-250 cursor-pointer active:scale-95 shadow-sm hover:shadow-[0_0_12px_rgba(170,59,255,0.15)]"
+            title="Open Menu"
+          >
+            <Menu className="w-4.5 h-4.5" />
+          </button>
         </div>
       </header>
       

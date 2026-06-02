@@ -522,7 +522,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   </button>
                 )}
 
-                {selectedFile && (
+                {maximizedPanel === 'preview' && selectedFile && (
                   <button
                     onClick={() => {
                       const newValue = !showSuggestions;

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { useSelector } from 'react-redux';
 import { useHome } from '../Hooks/useHome';
 import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-motion';
 import Lenis from 'lenis';
@@ -48,6 +49,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { initWorkspace } = useHome();
   const [isCreating, setIsCreating] = useState(false);
+  const user = useSelector((state) => state.auth.user);
   const containerRef = useRef(null);
   const mockupRef = useRef(null);
 
@@ -97,10 +99,11 @@ export default function LandingPage() {
   }, []);
 
   const handleCreateSandbox = async () => {
-    setIsCreating(true);
-    await initWorkspace(true);
-    setIsCreating(false);
-    navigate('/dashboard');
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    navigate('/projects');
   };
 
   return (
@@ -139,7 +142,12 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-stack-lg">
             <a className="text-primary font-bold border-b-2 border-primary/0 hover:border-primary/100 pb-1 font-label-caps text-label-caps transition-all" href="#">Platform</a>
             <a className="text-on-surface-variant hover:text-primary transition-colors font-label-caps text-label-caps" href="#">Solutions</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-caps text-label-caps" href="#">Docs</a>
+            <button 
+              onClick={() => navigate('/docs')} 
+              className="text-on-surface-variant hover:text-primary transition-colors font-label-caps text-label-caps cursor-pointer"
+            >
+              Docs
+            </button>
           </div>
           <button
             onClick={handleCreateSandbox}
@@ -148,7 +156,7 @@ export default function LandingPage() {
           >
             <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
             <span className="relative z-10 text-primary flex items-center gap-2">
-              {isCreating ? 'Booting...' : 'Launch IDE'} <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              {isCreating ? 'Booting...' : (user ? 'Launch IDE' : 'Sign In')} <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
         </div>
@@ -193,7 +201,10 @@ export default function LandingPage() {
                 </span>
               </button>
 
-              <button className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-surface-container/50 border border-outline-variant/30 text-on-surface font-semibold hover:bg-surface-container transition-all cursor-pointer backdrop-blur-md flex items-center justify-center gap-2 hover:border-primary/30 group text-base">
+              <button 
+                onClick={() => navigate('/docs')}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-surface-container/50 border border-outline-variant/30 text-on-surface font-semibold hover:bg-surface-container transition-all cursor-pointer backdrop-blur-md flex items-center justify-center gap-2 hover:border-primary/30 group text-base"
+              >
                 <Code2 className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
                 Read the Docs
               </button>

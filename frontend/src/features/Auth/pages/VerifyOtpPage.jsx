@@ -104,7 +104,10 @@ export default function VerifyOtpPage() {
     e.preventDefault();
     const otpCode = otp.join('');
     if (otpCode.length < 6) return;
-    await verifyOtpUser({ otp: otpCode });
+    const success = await verifyOtpUser({ otp: otpCode });
+    if (success) {
+      navigate('/');
+    }
   };
 
   const isOtpComplete = otp.every(digit => digit !== '');

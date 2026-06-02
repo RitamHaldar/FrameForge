@@ -4,6 +4,22 @@ FrameForge is an ultra-premium, AI-orchestrated cloud IDE and sandboxing environ
 
 ---
 
+## 🌟 New Feature Releases
+
+### 🎛️ Workspace Menu Sidebar
+A premium, right-side drawer overlay sliding in with spring physics.
+*   **Active Workspace Switcher**: Instantly syncs and restarts user containers (`initWorkspace(projectId, true)`) dynamically from the dashboard.
+*   **Google Account Profile**: Displays Google account user names and avatars. Fixes cross-origin blocking via standard `referrerPolicy="no-referrer"` headers and adds automated `onError` image loading error fallback cards.
+*   **Secure Session Termination**: Adds a logout link triggering state resets and backend HTTP cookie clears.
+
+### 📖 Interactive Documentation Hub (`/docs`)
+An industry-grade, beautiful documentation reader.
+*   **Smooth Motion & Navigation**: Sidebar tracking sections with smooth scrolling Lenis wrapper integration.
+*   **Interactive Search**: Real-time log query search filtering contents dynamically.
+*   **Architecture & REST References**: In-depth explanations of microservice boundaries, pod execution logic, and full REST schemas.
+
+---
+
 ## 🏗️ Architecture Overview
 
 The system is designed as a highly scalable microservice infrastructure running inside a Kubernetes cluster, developed with local multi-container syncing using Skaffold. The authentication layer is decoupled from notifications using an asynchronous RabbitMQ message queue.

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { GoogleAuth, GetMe, Login, Register, VerifyOtp } from "../controllers/auth.controller.js";
+import { GoogleAuth, GetMe, Login, Register, VerifyOtp, Logout } from "../controllers/auth.controller.js";
 import passport from "passport";
 import { authMiddleware } from "../middleware/auth.middleware.js"
 
@@ -56,5 +56,12 @@ authRouter.post("/verify-otp", authMiddleware, VerifyOtp);
  * @access Public
  */
 authRouter.get("/get-me", authMiddleware, GetMe);
+
+/**
+ * @route POST /api/auth/logout
+ * @desc Logs out the user and clears JWT token cookie
+ * @access Public
+ */
+authRouter.post("/logout", Logout);
 
 export default authRouter;
