@@ -136,15 +136,20 @@ export default function LandingPage() {
       >
         <div className="flex justify-between items-center h-20 px-8 mx-auto">
           <div className="flex items-center">
-            <img src="/logo/logo.png" className="h-12 w-auto object-contain" alt="FrameForge" />
+            <img src="/logo/logo.png" className="h-8 md:h-10 w-auto object-contain" alt="FrameForge" />
           </div>
 
-          <div className="hidden md:flex items-center gap-stack-lg">
-            <a className="text-primary font-bold border-b-2 border-primary/0 hover:border-primary/100 pb-1 font-label-caps text-label-caps transition-all" href="#">Platform</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-caps text-label-caps" href="#">Solutions</a>
+          <div className="hidden md:flex items-center gap-8">
+            <a className="text-on-surface hover:text-primary transition-colors text-sm font-medium tracking-wide" href="#">Platform</a>
+            <button 
+              onClick={() => navigate('/solutions')} 
+              className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium tracking-wide cursor-pointer"
+            >
+              Solutions
+            </button>
             <button 
               onClick={() => navigate('/docs')} 
-              className="text-on-surface-variant hover:text-primary transition-colors font-label-caps text-label-caps cursor-pointer"
+              className="text-on-surface-variant hover:text-primary transition-colors text-sm font-medium tracking-wide cursor-pointer"
             >
               Docs
             </button>
@@ -152,10 +157,10 @@ export default function LandingPage() {
           <button
             onClick={handleCreateSandbox}
             disabled={isCreating}
-            className="group relative px-6 py-2 rounded-lg font-label-caps text-label-caps font-bold overflow-hidden disabled:opacity-50 cursor-pointer border border-primary/20 bg-surface-container hover:bg-surface-container-high transition-all"
+            className="group relative px-6 py-2.5 rounded-full text-sm font-semibold overflow-hidden disabled:opacity-50 cursor-pointer border border-outline-variant/30 bg-surface-container/50 hover:bg-surface-container-high hover:border-primary/50 transition-all backdrop-blur-md shadow-sm"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-            <span className="relative z-10 text-primary flex items-center gap-2">
+            <span className="relative z-10 text-on-surface flex items-center gap-2 group-hover:text-primary transition-colors">
               {isCreating ? 'Booting...' : (user ? 'Launch IDE' : 'Sign In')} <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </span>
           </button>
@@ -173,7 +178,7 @@ export default function LandingPage() {
             animate="show"
             className="flex flex-col items-center"
           >
-            <motion.div variants={FADE_UP_ANIMATION_VARIANTS} className="inline-flex items-center gap-2 px-3 py-1 mb-10 rounded-full border border-primary/20 bg-primary/5 text-primary font-label-caps text-label-caps tracking-wider shadow-sm select-none backdrop-blur-sm">
+            <motion.div variants={FADE_UP_ANIMATION_VARIANTS} className="inline-flex items-center gap-2.5 px-4 py-1.5 mb-12 rounded-full border border-outline-variant/30 bg-surface-container/30 text-on-surface-variant text-xs font-medium tracking-wide shadow-sm select-none backdrop-blur-md">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
@@ -181,11 +186,11 @@ export default function LandingPage() {
               v3.0.0 Orion Engine Online
             </motion.div>
 
-            <motion.h1 variants={FADE_UP_ANIMATION_VARIANTS} className="font-display-lg text-[64px] leading-[1.1] md:text-[88px] text-on-surface mb-8 tracking-tighter font-extrabold max-w-5xl">
-              Forge the <span className="text-transparent bg-clip-text bg-gradient-to-b from-primary via-primary/80 to-outline-variant inline-block">Future of Code.</span>
+            <motion.h1 variants={FADE_UP_ANIMATION_VARIANTS} className="text-6xl md:text-[96px] leading-[1.05] text-on-surface mb-8 tracking-[-0.04em] font-bold max-w-5xl">
+              Forge the <span className="text-transparent bg-clip-text bg-gradient-to-b from-primary via-primary/90 to-primary/50 inline-block drop-shadow-sm">Future of Code.</span>
             </motion.h1>
 
-            <motion.p variants={FADE_UP_ANIMATION_VARIANTS} className="font-body-lg text-xl md:text-2xl text-on-surface-variant/80 max-w-3xl mx-auto mb-12 leading-relaxed font-light">
+            <motion.p variants={FADE_UP_ANIMATION_VARIANTS} className="text-xl md:text-2xl text-on-surface-variant/70 max-w-3xl mx-auto mb-14 leading-[1.6] font-light">
               The ultimate glassmorphic sandbox environment for AI-orchestrated UI development. Deploy stunning micro-apps in milliseconds with zero configuration.
             </motion.p>
 
@@ -193,7 +198,7 @@ export default function LandingPage() {
               <button
                 onClick={handleCreateSandbox}
                 disabled={isCreating}
-                className="relative group w-full sm:w-auto px-8 py-3.5 rounded-xl bg-primary text-background font-bold text-base transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer overflow-hidden shadow-[0_0_40px_-10px_rgba(255,255,255,0.4)]"
+                className="relative group w-full sm:w-auto px-10 py-4 rounded-full bg-primary text-background font-medium text-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer overflow-hidden shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out"></div>
                 <span className="relative z-10 flex items-center justify-center gap-2">
@@ -203,7 +208,7 @@ export default function LandingPage() {
 
               <button 
                 onClick={() => navigate('/docs')}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-surface-container/50 border border-outline-variant/30 text-on-surface font-semibold hover:bg-surface-container transition-all cursor-pointer backdrop-blur-md flex items-center justify-center gap-2 hover:border-primary/30 group text-base"
+                className="w-full sm:w-auto px-10 py-4 rounded-full bg-surface/5 border border-outline-variant/20 text-on-surface font-medium hover:bg-surface/10 transition-all cursor-pointer backdrop-blur-xl flex items-center justify-center gap-2 hover:border-outline-variant/50 group text-lg shadow-sm"
               >
                 <Code2 className="w-5 h-5 text-on-surface-variant group-hover:text-primary transition-colors" />
                 Read the Docs
@@ -257,9 +262,9 @@ export default function LandingPage() {
 
         {/* Feature Grid Section */}
         <section className="max-w-container-max mx-auto px-margin-desktop py-32 relative">
-          <div className="text-center mb-20">
-            <h2 className="font-display-lg text-4xl md:text-5xl text-on-surface font-bold mb-6">Designed for the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-outline-variant">Elite.</span></h2>
-            <p className="text-on-surface-variant/80 max-w-2xl mx-auto text-lg">Every pixel, every millisecond, engineered for architects who demand absolute perfection and raw power.</p>
+          <div className="text-center mb-24">
+            <h2 className="text-4xl md:text-6xl text-on-surface font-bold mb-6 tracking-tight">Designed for the <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/80 to-on-surface/50">Elite.</span></h2>
+            <p className="text-on-surface-variant/70 max-w-2xl mx-auto text-xl font-light leading-relaxed">Every pixel, every millisecond, engineered for architects who demand absolute perfection and raw power.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -279,11 +284,11 @@ export default function LandingPage() {
               viewport={{ once: true, margin: "-100px" }}
               transition={{ duration: 0.8, ease: "easeOut" }}
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-primary/10 text-primary font-label-caps text-[10px] border border-primary/20">
-                <Activity className="w-3 h-3" /> PERFORMANCE METRICS
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full bg-primary/10 text-primary font-medium tracking-wide text-xs border border-primary/20">
+                <Activity className="w-3.5 h-3.5" /> PERFORMANCE METRICS
               </div>
-              <h2 className="font-display-lg text-4xl md:text-5xl text-on-surface font-bold mb-6">Unrivaled <br /><span className="text-primary italic">Execution.</span></h2>
-              <p className="font-body-lg text-lg text-on-surface-variant/80 mb-10 leading-relaxed font-light">
+              <h2 className="text-4xl md:text-6xl text-on-surface font-bold mb-8 tracking-tight">Unrivaled <br /><span className="text-primary italic font-light pr-2">Execution.</span></h2>
+              <p className="text-xl text-on-surface-variant/70 mb-12 leading-[1.7] font-light">
                 Standard tools crack under pressure. FrameForge uses a proprietary V8-optimized kernel bridge to deliver synchronous 144FPS rendering cycles and sub-millisecond latency.
               </p>
 
@@ -348,15 +353,15 @@ export default function LandingPage() {
               <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                 <Globe className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="font-display-lg text-4xl md:text-6xl text-primary font-bold mb-6 tracking-tight">Ready to ascend?</h2>
-              <p className="text-on-surface-variant/80 mb-12 text-xl font-light leading-relaxed">
+              <h2 className="text-4xl md:text-6xl text-primary font-bold mb-6 tracking-tight">Ready to ascend?</h2>
+              <p className="text-on-surface-variant/80 mb-12 text-xl font-light leading-[1.7]">
                 Join the exclusive vanguard of architects building the next generation of absolute high-performance web applications.
               </p>
 
               <button
                 onClick={handleCreateSandbox}
                 disabled={isCreating}
-                className="group relative bg-primary text-background px-8 py-4 rounded-full font-bold text-base hover:shadow-[0_0_50px_rgba(255,255,255,0.3)] transition-all duration-300 active:scale-95 disabled:opacity-50 cursor-pointer overflow-hidden flex items-center gap-3"
+                className="group relative bg-primary text-background px-10 py-5 rounded-full font-medium text-lg hover:shadow-[0_0_60px_-15px_rgba(255,255,255,0.5)] transition-all duration-300 active:scale-95 disabled:opacity-50 cursor-pointer overflow-hidden flex items-center gap-3"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover:translate-y-[0%] transition-transform duration-300 ease-out"></div>
                 <span className="relative z-10 flex items-center gap-2">
@@ -416,22 +421,22 @@ export default function LandingPage() {
 function FeatureCard({ feature, index }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 40 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.6, delay: index * 0.15, ease: "easeOut" }}
-      whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.2 } }}
-      className="group relative p-8 bg-[#111] rounded-2xl border border-outline-variant/20 hover:border-outline-variant/50 transition-all duration-300 overflow-hidden"
+      transition={{ duration: 0.7, delay: index * 0.15, ease: "easeOut" }}
+      whileHover={{ y: -10, transition: { duration: 0.3, ease: "easeOut" } }}
+      className="group relative p-10 bg-surface/5 backdrop-blur-sm rounded-3xl border border-outline-variant/10 hover:border-outline-variant/30 transition-all duration-500 overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-primary/5"
     >
       {/* Hover background glow */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+      <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-20 transition-opacity duration-700`}></div>
 
       <div className="relative z-10">
-        <div className={`w-12 h-12 flex items-center justify-center rounded-xl ${feature.iconBg} mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+        <div className={`w-14 h-14 flex items-center justify-center rounded-2xl ${feature.iconBg} mb-8 shadow-sm group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500`}>
           {feature.icon}
         </div>
-        <h3 className="font-display-lg text-2xl text-on-surface mb-3 font-semibold group-hover:text-primary transition-colors">{feature.title}</h3>
-        <p className="text-on-surface-variant/70 font-body-md text-base leading-relaxed font-light">
+        <h3 className="text-2xl text-on-surface mb-4 font-semibold tracking-tight group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
+        <p className="text-on-surface-variant/70 text-base leading-[1.7] font-light">
           {feature.description}
         </p>
       </div>

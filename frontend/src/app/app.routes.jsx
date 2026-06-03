@@ -6,6 +6,7 @@ import VerifyOtpPage from '../features/Auth/pages/VerifyOtpPage';
 import ProjectsPage from '../features/Home/pages/ProjectsPage';
 import Protected from "../features/Auth/components/Protected";
 import DocsPage from "../features/Home/pages/DocsPage";
+import SolutionsPage from "../features/Home/pages/SolutionsPage";
 
 export const router = createBrowserRouter([
     {
@@ -23,6 +24,10 @@ export const router = createBrowserRouter([
     {
         path: "/docs",
         element: <DocsPage />,
+    },
+    {
+        path: "/solutions",
+        element: <SolutionsPage />,
     },
     {
         path: "/projects",

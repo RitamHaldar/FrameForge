@@ -18,6 +18,18 @@ An industry-grade, beautiful documentation reader.
 *   **Interactive Search**: Real-time log query search filtering contents dynamically.
 *   **Architecture & REST References**: In-depth explanations of microservice boundaries, pod execution logic, and full REST schemas.
 
+### 🚀 Enterprise Solutions Hub (`/solutions`)
+An interactive, high-fidelity system architecture dashboard detailing internal microservices.
+*   **Visual Pipeline Process Tracker**: Real-time interactive node graphs with dynamic status updates (`PENDING`, `PROCESSING`, `SUCCESS`), pulsing loading rings, and glowing green connector lines representing system data streams.
+*   **Real-time Operations Simulator**: Integrated black-box terminal displaying simulated synchronous server logs (e.g. RabbitMQ queue events, Vite dev server watch polling, and LangChain model tokens).
+*   **Deep-Dive Technical Panels**: Organized views mapping problem-solution summaries, technical specs, API routes, and codebase structures directly from project README documents.
+
+### 🎨 Premium Landing Page Modernization
+Aesthetic refinement aligned with top-tier interface engineering standards.
+*   **Aesthetic Alignment**: Retuned typography with negative tracking, larger display headings (`96px`), softer contrast text colors, and refined spacing.
+*   **Fluid Custom Buttons**: Replaced blocky rectangular elements with larger, pill-shaped (`rounded-full`) buttons featuring subtle glassmorphic backdrop-blurs and hover glows.
+*   **Micro-Animations**: Enhanced feature card hover triggers with smoother float offsets (`y-10`) and slight icon rotations.
+
 ---
 
 ## 🏗️ Architecture Overview

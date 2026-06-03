@@ -92,3 +92,10 @@ The server launches on `http://localhost:5173`.
 - Features smooth scrolling using **Lenis** and fluid entrance/active-indicator animations using **Framer Motion**.
 - Fully accessible from the Landing Page navbar and hero CTA button.
 
+## 🚀 Enterprise Solutions Hub (`/solutions`)
+- An interactive dashboard documenting technical specifications, problem-solution breakdowns, and API endpoints for our core subsystems.
+- Features a **Visual Process Pipeline Tracker** mapping dynamic statuses (`PENDING`, `PROCESSING`, `SUCCESS`), pulsing node rings, and glowing connection lines representing data flow streams.
+- Contains a **Real-time Operations Simulator** logging mock container initialization, queue event processing, and AI synthetics streams in a custom-scrolled terminal emulator.
+- Globally smooth-scrolled via **Lenis** and structured in a desktop-sticky split-grid.
+
+
