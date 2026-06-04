@@ -66,3 +66,6 @@ manifests:
     - k8s/ai-worker-service.yml
     - k8s/auth-deployment.yml
     - k8s/auth-service.yml
+    - k8s/notification-deployment.yml
+    - k8s/notification-service.yml
+    

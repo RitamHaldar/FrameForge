@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Lock, LogIn } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Lock, LogIn, Loader2 } from 'lucide-react';
 import AnimatedInput from './AnimatedInput';
 import SocialLogin from './SocialLogin';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router';
+import { useSelector } from 'react-redux';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,6 +28,7 @@ const itemVariants = {
 export default function LoginForm({ onToggleForm }) {
   const {loginUser} = useAuth();
   const navigate = useNavigate();
+  const { isLoading, err } = useSelector((state) => state.auth);
   const [formValues, setFormValues] = useState({ email: '', password: '' });
 
   const handleChange = (e) => {
@@ -38,7 +40,7 @@ export default function LoginForm({ onToggleForm }) {
     e.preventDefault();
     const success = await loginUser({email:formValues.email,password:formValues.password});
     if (success) {
-      navigate('/verify-otp');
+      navigate('/');
     }
   };
 
@@ -74,15 +76,38 @@ export default function LoginForm({ onToggleForm }) {
 
         <motion.button
           variants={itemVariants}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={!isLoading ? { scale: 1.02 } : {}}
+          whileTap={!isLoading ? { scale: 0.98 } : {}}
           type="submit"
-          className="w-full py-3 mt-2 bg-white text-black font-semibold rounded-lg flex items-center justify-center gap-2 cursor-pointer"
+          disabled={isLoading}
+          className={`w-full py-3 mt-2 bg-white text-black font-semibold rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-opacity ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <LogIn size={20} />
-          <span>Sign In</span>
+          {isLoading ? (
+            <>
+              <Loader2 size={20} className="animate-spin" />
+              <span>Signing In...</span>
+            </>
+          ) : (
+            <>
+              <LogIn size={20} />
+              <span>Sign In</span>
+            </>
+          )}
         </motion.button>
       </form>
+
+      <AnimatePresence mode="wait">
+        {err && (
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="text-red-400 text-sm text-center font-medium mt-1"
+          >
+            {err}
+          </motion.p>
+        )}
+      </AnimatePresence>
 
       <motion.div variants={itemVariants} className="relative flex items-center py-2">
         <div className="flex-grow border-t border-[rgba(255,255,255,0.08)]"></div>

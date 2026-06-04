@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config/config.js";
+import {sendOtpforVerification} from "../config/queue.js"
 /**
  * Registers a new user with the provided credentials.
  * Checks for existing username/email, creates a new user record, and sets a JWT cookie.
@@ -113,17 +114,16 @@ export async function GoogleAuth(req, res) {
  * 
  * @async
  * @function VerifyOtp
- * @param {import("express").Request} req - Express request object containing otp in req.body.
+ * @param {import("express").Request} req - Express request object containing email and otp in req.body.
  * @param {import("express").Response} res - Express response object.
  * @returns {Promise<import("express").Response>} Express response.
  */
 export async function VerifyOtp(req, res) {
-    const { id } = req.user;
-    const { otp } = req.body;
-    if (!otp) {
-        return res.status(400).json({ message: "OTP is required" });
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+        return res.status(400).json({ message: "Email and OTP are required" });
     }
-    const user = await User.findById(id);
+    const user = await User.findOne({ email });
     if (!user) {
         return res.status(400).json({ message: "User not found" });
     }

@@ -48,7 +48,7 @@ authRouter.get("/google/callback", passport.authenticate("google", {
  * @desc Verifies the OTP sent to the user for email verification
  * @access Public
  */
-authRouter.post("/verify-otp", authMiddleware, VerifyOtp);
+authRouter.post("/verify-otp", VerifyOtp);
 
 /**
  * @route GET /api/auth/get-me

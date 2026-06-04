@@ -104,7 +104,8 @@ export default function VerifyOtpPage() {
     e.preventDefault();
     const otpCode = otp.join('');
     if (otpCode.length < 6) return;
-    const success = await verifyOtpUser({ otp: otpCode });
+    const email = sessionStorage.getItem("register_email") || "";
+    const success = await verifyOtpUser({ email, otp: otpCode });
     if (success) {
       navigate('/');
     }

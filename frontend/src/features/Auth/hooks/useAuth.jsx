@@ -8,23 +8,31 @@ export const useAuth = () => {
     const registerUser = async ({ username, email, password }) => {
         try {
             dispatch(setLoading(true));
+            dispatch(setError(null));
             const response = await register({ username, email, password });
             dispatch(setUser(response.data.user.username));
             dispatch(setAvatar(response.data.user.avatar));
+            sessionStorage.setItem("register_email", email);
+            return true;
         } catch (error) {
-            dispatch(setError(error.message));
+            dispatch(setError(error.response?.data?.message || error.message));
+            return false;
         } finally {
             dispatch(setLoading(false));
         }
     }
-    const verifyOtpUser = async ({ otp }) => {
+    const verifyOtpUser = async ({ email, otp }) => {
         try {
             dispatch(setLoading(true));
-            const response = await verifyOtp({ otp });
+            dispatch(setError(null));
+            const response = await verifyOtp({ email, otp });
             dispatch(setUser(response.data.user.username));
             dispatch(setAvatar(response.data.user.avatar));
+            sessionStorage.removeItem("register_email");
+            return true;
         } catch (error) {
-            dispatch(setError(error.message));
+            dispatch(setError(error.response?.data?.message || error.message));
+            return false;
         } finally {
             dispatch(setLoading(false));
         }
@@ -32,11 +40,14 @@ export const useAuth = () => {
     const loginUser = async ({ username, email, password }) => {
         try {
             dispatch(setLoading(true));
+            dispatch(setError(null));
             const response = await login({ username, email, password });
             dispatch(setUser(response.data.user.username));
             dispatch(setAvatar(response.data.user.avatar));
+            return true;
         } catch (error) {
-            dispatch(setError(error.message));
+            dispatch(setError(error.response?.data?.message || error.message));
+            return false;
         } finally {
             dispatch(setLoading(false));
         }
@@ -48,7 +59,8 @@ export const useAuth = () => {
             dispatch(setUser(response.data.user.username));
             dispatch(setAvatar(response.data.user.avatar));
         } catch (error) {
-            dispatch(setError(error.message));
+            dispatch(setUser(null));
+            dispatch(setAvatar(null));
         } finally {
             dispatch(setLoading(false));
         }
@@ -60,7 +72,7 @@ export const useAuth = () => {
             dispatch(setUser(null));
             dispatch(setAvatar(null));
         } catch (error) {
-            dispatch(setError(error.message));
+            dispatch(setError(error.response?.data?.message || error.message));
         } finally {
             dispatch(setLoading(false));
         }
