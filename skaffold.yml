@@ -38,6 +38,10 @@ build:
       context: Sandbox/template
       docker:
         dockerfile: dockerfile
+    - image: sync-agent
+      context: Sandbox/sync-agent
+      docker:
+        dockerfile: dockerfile
     - image: ai-worker
       context: ai-worker
       docker:
@@ -68,4 +72,3 @@ manifests:
     - k8s/auth-service.yml
     - k8s/notification-deployment.yml
     - k8s/notification-service.yml
-    

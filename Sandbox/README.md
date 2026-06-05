@@ -24,6 +24,10 @@ The Sandboxing system is split into four distinct subcomponents:
 - **Tech Stack**: React 19, Vite 8, TailwindCSS 4.
 - **Purpose**: A high-performance Vite starter app cloned inside every new sandbox space upon boot. Features custom polling configurations for ultra-fast, local JIT file sync hot-reloads within Kubernetes pods.
 
+### 5. `sync-agent/` (State Synchronizer)
+- **Tech Stack**: Node.js, `@aws-sdk/client-s3`, `chokidar`.
+- **Purpose**: Runs inside the isolated sandbox pod alongside the workspace and agent. It downloads existing workspace files from Amazon S3 on boot, and watches `/workspace` for real-time edits, syncing additions and changes back to S3 under the project's ID.
+
 ---
 
 ## 📂 Subfolder Tree
@@ -38,6 +42,9 @@ The Sandboxing system is split into four distinct subcomponents:
 ├── service/              # Pod provisioner controller
 │   ├── src/              # K8s Pod/Service manifest definitions
 │   └── server.js         # API launcher
+├── sync-agent/           # Workspace state S3 synchronizer
+│   ├── sync.js           # File watcher & S3 syncer entry point
+│   └── dockerfile        # Container recipe
 └── template/             # Boilerplate Vite workspace canvas
     ├── src/              # React components, index.css, and main.jsx
     ├── index.html        # App entry point
