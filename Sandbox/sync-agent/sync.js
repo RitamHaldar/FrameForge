@@ -105,16 +105,15 @@ function startWatcher(hasFiles) {
 
 async function init() {
     try {
-        const s3Objects = await checkS3ForFiles();
-        const hasFiles = s3Objects.length > 0;
-
-        if (hasFiles) {
-            await downloadFilesFromS3(s3Objects);
-        } else {
-            console.log("No files found in S3. Local files will be synced to S3 automatically.");
-        }
-
-        startWatcher(hasFiles);
+        console.log("AWS S3 integration commented out.");
+        // const s3Objects = await checkS3ForFiles();
+        // const hasFiles = s3Objects.length > 0;
+        // if (hasFiles) {
+        //     await downloadFilesFromS3(s3Objects);
+        // } else {
+        //     console.log("No files found in S3. Local files will be synced to S3 automatically.");
+        // }
+        // startWatcher(hasFiles);
     } catch (error) {
         console.error("Error during initialization:", error);
     }
