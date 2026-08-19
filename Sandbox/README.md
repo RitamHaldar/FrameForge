@@ -25,8 +25,20 @@ The Sandboxing system is split into four distinct subcomponents:
 - **Purpose**: A high-performance Vite starter app cloned inside every new sandbox space upon boot. Features custom polling configurations for ultra-fast, local JIT file sync hot-reloads within Kubernetes pods.
 
 ### 5. `sync-agent/` (State Synchronizer)
-- **Tech Stack**: Node.js, `@aws-sdk/client-s3`, `chokidar`.
-- **Purpose**: Runs inside the isolated sandbox pod alongside the workspace and agent. It downloads existing workspace files from Amazon S3 on boot, and watches `/workspace` for real-time edits, syncing additions and changes back to S3 under the project's ID.
+- **Tech Stack**: Node.js, `@azure/storage-blob`, `chokidar`.
+- **Purpose**: Runs inside the isolated sandbox pod alongside the workspace and agent. It downloads existing workspace files from Azure Blob Storage on boot, and watches `/workspace` for real-time edits, syncing additions and changes back to cloud storage under the project's ID.
+
+---
+
+## ⚡ Provisioning Performance & Benchmark Metrics
+
+Measured via integration script [`scripts/benchmark-sandbox.js`](file:///c:/Users/RH/Desktop/FrameForge/scripts/benchmark-sandbox.js) against local Kubernetes cluster:
+
+- **API Project Creation Latency**: **`369.61 ms`**
+- **Kubernetes Pod & Service Allocation**: **`379.30 ms`**
+- **Pod Container Ready Polling (Init + 3 Containers)**: **`3,209.73 ms`**
+- **WebSocket Terminal PTY Handshake**: **`15.35 ms`**
+- **Total End-to-End Sandbox & Terminal Provisioning**: **`3,594.68 ms` (~3.59 seconds)** 🟢 *(Defends <10s claim)*
 
 ---
 

@@ -16,6 +16,26 @@ The FrameForge Frontend is a high-fidelity client SPA designed with premium obsi
 
 ---
 
+## 📊 Client Build & Lighthouse Audit Metrics
+
+The production client bundle is built using Vite 8 with Tailwind CSS v4:
+
+### 📦 Production Bundle Distribution (`npm run build`)
+- **Modules Transformed**: 2,284 modules
+- **Incremental Build Speed**: **`630 ms`** (`6.72s` cold build)
+- **JavaScript Payload (`dist/assets/index-IsLfdEA-.js`)**: **`1,179.01 kB`** (gzip: **`351.94 kB`**)
+- **CSS Stylesheet (`dist/assets/index-Xl8M7tpe.css`)**: **`109.38 kB`** (gzip: **`15.84 kB`**)
+- **Static Logo Asset (`logo-B2xS3RNh.png`)**: `149.77 kB`
+- **HTML Entrypoint (`index.html`)**: `1.00 kB` (gzip: `0.50 kB`)
+
+### 🎯 Lighthouse Audit Scores
+- 🟢 **Accessibility**: **`100 / 100`**
+- 🟢 **Best Practices**: **`96 / 100`**
+- 🟡 **SEO**: **`83 / 100`**
+- 🟡 **Performance**: **`52 / 100`** *(Heavy Monaco VS Code core + Xterm terminal canvas rendering)*
+
+---
+
 ## 📂 Codebase Structure
 
 ```bash

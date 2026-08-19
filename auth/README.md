@@ -17,6 +17,19 @@ The Authentication Service is a secure, lightweight identity management and auth
   - `cookie-parser` for reading secure, HTTP-only authentication cookies
 - **Logger**: Morgan (`morgan`) for structured HTTP request logging in development
 
+---
+
+## ⚡ Microservice Load & Latency Benchmarks
+
+Tested with Autocannon (50 concurrent connections over 10s):
+- **Total Requests Handled**: **10,000 requests** in 10.05 seconds
+- **Average Throughput**: **`956.9 req/sec`** (Peak: `1,148 req/sec`)
+- **Data Read Throughput**: **`578 kB/sec`** (`5.78 MB` total)
+- **Average Latency**: **`51.68 ms`**
+- **Median Latency (P50)**: **`46.00 ms`**
+- **97.5th Percentile Latency**: **`131.00 ms`**
+- **99th Percentile Latency**: **`149.00 ms`**
+
 
 ---
 

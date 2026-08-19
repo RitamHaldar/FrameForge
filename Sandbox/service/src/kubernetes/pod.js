@@ -6,7 +6,7 @@ import { k8sApi } from "./config.js"
  * @param {string} sandboxId - The unique ID of the sandbox.
  * @returns {Promise<object>} The Kubernetes API response for the created Pod.
  */
-export async function createPod(sandboxId,projectId) {
+export async function createPod(sandboxId, projectId) {
     const podManifest = {
         "metadata": {
             "name": `sandbox-pod-${sandboxId}`,
@@ -68,55 +68,46 @@ export async function createPod(sandboxId,projectId) {
                         }
                     ]
                 },
-// {
-                //     "name": "sync-agent",
-                //     "image": "sync-agent:latest",
-                //     "imagePullPolicy": "IfNotPresent",
-                //     "ports": [{ "containerPort": 4000 }],
-                //     "resources": {
-                //         "limits": { "memory": "1Gi", "cpu": "500m" },
-                //         "requests": { "memory": "512Mi", "cpu": "250m" }
-                //     },
-                //     "volumeMounts": [
-                //         {
-                //             "name": "workspace-volume",
-                //             "mountPath": "/workspace"
-                //         }
-                //     ],
-                //     "env":[
-                //         {
-                //             "name": "PROJECT_ID",
-                //             "value": projectId
-                //         },
-                //         {
-                //             "name": "AWS_ACCESS_KEY_ID",
-                //             "valueFrom":{
-                //                 "secretKeyRef":{
-                //                     "name":"aws",
-                //                     "key":"AWS_ACCESS_KEY_ID"
-                //                 }
-                //             }
-                //         },
-                //         {
-                //             "name": "AWS_SECRET_ACCESS_KEY",
-                //             "valueFrom":{
-                //                 "secretKeyRef":{
-                //                     "name":"aws",
-                //                     "key":"AWS_SECRET_ACCESS_KEY"
-                //                 }
-                //             }
-                //         },
-                //         {
-                //             "name": "AWS_REGION",
-                //             "valueFrom":{
-                //                 "secretKeyRef":{
-                //                     "name":"aws",
-                //                     "key":"AWS_REGION"
-                //                 }
-                //             }
-                //         }
-                //     ]
-                // }
+                {
+                    "name": "sync-agent",
+                    "image": "sync-agent:latest",
+                    "imagePullPolicy": "IfNotPresent",
+                    "ports": [{ "containerPort": 4000 }],
+                    "resources": {
+                        "limits": { "memory": "1Gi", "cpu": "500m" },
+                        "requests": { "memory": "512Mi", "cpu": "250m" }
+                    },
+                    "volumeMounts": [
+                        {
+                            "name": "workspace-volume",
+                            "mountPath": "/workspace"
+                        }
+                    ],
+                    "env": [
+                        {
+                            "name": "PROJECT_ID",
+                            "value": projectId
+                        },
+                        {
+                            "name": "AZURE_STORAGE_CONNECTION_STRING",
+                            "valueFrom": {
+                                "secretKeyRef": {
+                                    "name": "azure-storage",
+                                    "key": "AZURE_STORAGE_CONNECTION_STRING"
+                                }
+                            }
+                        },
+                        {
+                            "name": "AZURE_STORAGE_CONTAINER_NAME",
+                            "valueFrom": {
+                                "secretKeyRef": {
+                                    "name": "azure-storage",
+                                    "key": "AZURE_STORAGE_CONTAINER_NAME"
+                                }
+                            }
+                        }
+                    ]
+                }
 
             ]
         }

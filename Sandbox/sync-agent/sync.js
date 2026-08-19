@@ -1,23 +1,24 @@
 import chokidar from "chokidar";
-import { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+    BlobServiceClient
+} from "@azure/storage-blob";
 import dotenv from "dotenv";
 import fs from 'fs';
 import path from 'path';
 dotenv.config();
 
-const s3Client = new S3Client({
-    region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
-});
-
+const blobServiceClient =
+    BlobServiceClient.fromConnectionString(
+        process.env.AZURE_STORAGE_CONNECTION_STRING
+    );
+const containerClient =
+    blobServiceClient.getContainerClient(
+        process.env.AZURE_STORAGE_CONTAINER_NAME
+    );
 const projectId = process.env.PROJECT_ID
-const bucketName = 'frame-forge-bucket';
 const localDirectory = "/workspace";
 
-async function checkS3ForFiles() {
+/**async function checkS3ForFiles() {
     console.log(`Checking S3 for existing files in project: ${projectId}`);
     const listCommand = new ListObjectsV2Command({
         Bucket: bucketName,
@@ -25,9 +26,25 @@ async function checkS3ForFiles() {
     });
     const listResponse = await s3Client.send(listCommand);
     return listResponse.Contents || [];
+}*/
+
+async function checkBlobStorageForFiles() {
+    console.log(`Checking Azure Blob Storage for existing files in project: ${projectId}`);
+    const files = [];
+
+    // listBlobsFlat returns an async iterable filtered by prefix
+    const iterator = containerClient.listBlobsFlat({
+        prefix: `${projectId}/`
+    });
+
+    for await (const blob of iterator) {
+        files.push(blob);
+    }
+
+    return files;
 }
 
-async function downloadFilesFromS3(s3Objects) {
+/**async function downloadFilesFromS3(s3Objects) {
     console.log("Found existing files in S3. Syncing to local directory...");
     for (const file of s3Objects) {
         // Skip if it is a directory placeholder
@@ -55,9 +72,32 @@ async function downloadFilesFromS3(s3Objects) {
 
         console.log(`Downloaded ${file.Key} to ${localFilePath}`);
     }
+}*/
+
+async function downloadFilesFromBlobStorage(blobs) {
+    console.log("Found existing files in Azure Blob Storage. Syncing to local directory...");
+
+    for (const blob of blobs) {
+        // Skip if it is a directory placeholder
+        if (blob.name.endsWith('/')) continue;
+
+        const relativePath = blob.name.replace(`${projectId}/`, '');
+        const localFilePath = path.join(localDirectory, relativePath);
+
+        // Ensure the local directory structure exists
+        fs.mkdirSync(path.dirname(localFilePath), { recursive: true });
+
+        // Get a client for the specific blob
+        const blobClient = containerClient.getBlobClient(blob.name);
+
+        // Azure SDK provides a built-in method that streams directly to disk
+        await blobClient.downloadToFile(localFilePath);
+
+        console.log(`Downloaded ${blob.name} to ${localFilePath}`);
+    }
 }
 
-async function uploadFileToS3(filePath) {
+/**async function uploadFileToS3(filePath) {
     try {
         const fileContent = fs.readFileSync(filePath);
         const relativePath = path.relative(localDirectory, filePath);
@@ -81,7 +121,31 @@ async function uploadFileToS3(filePath) {
     } catch (err) {
         console.error(`Error syncing ${filePath} to S3:`, err);
     }
+}*/
+
+async function uploadFileToBlobStorage(filePath) {
+    try {
+        if (filePath.includes('node_modules') || filePath.includes('.env')) {
+            return; // Skip syncing node_modules and .env files
+        }
+
+        // Normalize path separators to forward slashes for cloud storage keys
+        const relativePath = path.relative(localDirectory, filePath).replace(/\\/g, '/');
+        const blobName = `${projectId}/${relativePath}`;
+
+        // Get a BlockBlobClient scoped to the target blob
+        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+        // Directly upload from disk without loading the entire file into memory
+        await blockBlobClient.uploadFile(filePath);
+
+        console.log(`Successfully synced ${filePath} to Azure Blob: ${blobName}`);
+    } catch (err) {
+        console.error(`Error syncing ${filePath} to Azure Blob Storage:`, err);
+    }
 }
+
+
 
 function startWatcher(hasFiles) {
     console.log("Starting chokidar watch...");
@@ -98,22 +162,24 @@ function startWatcher(hasFiles) {
             if (filePath.includes('node_modules') || filePath.includes('.env')) {
                 return; // Skip syncing node_modules and .env files
             }
-            await uploadFileToS3(filePath);
+            await uploadFileToBlobStorage(filePath);
         }
     });
 }
 
 async function init() {
     try {
-        console.log("AWS S3 integration commented out.");
-        // const s3Objects = await checkS3ForFiles();
-        // const hasFiles = s3Objects.length > 0;
-        // if (hasFiles) {
-        //     await downloadFilesFromS3(s3Objects);
-        // } else {
-        //     console.log("No files found in S3. Local files will be synced to S3 automatically.");
-        // }
-        // startWatcher(hasFiles);
+        console.log("Initializing Azure Blob Storage synchronization...");
+        const blobs = await checkBlobStorageForFiles();
+        const hasFiles = blobs.length > 0;
+
+        if (hasFiles) {
+            await downloadFilesFromBlobStorage(blobs);
+        } else {
+            console.log("No files found in Azure Blob Storage. Local files will be synced to Blob Storage automatically.");
+        }
+
+        startWatcher(hasFiles);
     } catch (error) {
         console.error("Error during initialization:", error);
     }
