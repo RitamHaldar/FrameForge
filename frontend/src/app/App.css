@@ -55,6 +55,20 @@
   --color-glow-tertiary: rgba(255, 255, 255, 0.1);
   --color-terminal-bg: #0e0e0e;
 
+  /* Technical Obsidian & Cyan Theme */
+  --color-obsidian: #08090A;
+  --color-obsidian-50: #15171B;
+  --color-obsidian-100: #111418;
+  --color-obsidian-200: #0D0F11;
+  --color-obsidian-border: rgba(255, 255, 255, 0.07);
+  --color-obsidian-borderHigh: rgba(255, 255, 255, 0.14);
+  --color-cyanAccent: #00F0FF;
+  --color-cyanAccent-dim: rgba(0, 240, 255, 0.15);
+  --color-cyanAccent-glow: rgba(0, 240, 255, 0.35);
+  --color-textPrimary: #F5F5F5;
+  --color-textSecondary: #969BA3;
+  --color-textMuted: #5D636C;
+
   --font-display-lg: "Hanken Grotesk", sans-serif;
   --font-headline-lg: "Hanken Grotesk", sans-serif;
   --font-headline-lg-mobile: "Hanken Grotesk", sans-serif;
@@ -139,6 +153,8 @@
     background-color: var(--color-background);
     color: var(--color-on-background);
     font-family: var(--font-body-md);
+    overscroll-behavior-y: none !important;
+    overscroll-behavior-x: none !important;
   }
 }
 
@@ -165,6 +181,83 @@
   }
   .animate-float {
     animation: float 6s ease-in-out infinite;
+  }
+
+  /* Technical Grid & Dots */
+  .tech-grid {
+    background-size: 36px 36px;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  }
+  .tech-dots {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Glass card border highlights */
+  .obsidian-card {
+    background: #0D0F11;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  }
+  .obsidian-card:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px -12px rgba(0,0,0,0.65), 0 0 0 1px rgba(0, 240, 255, 0.05);
+  }
+
+  /* Monaco line numbers & token styling */
+  .editor-line {
+    counter-increment: editor-counter;
+    display: flex;
+    align-items: center;
+    line-height: 1.625rem;
+    min-height: 1.625rem;
+  }
+  .editor-line::before {
+    content: counter(editor-counter);
+    display: inline-block;
+    width: 2.2rem;
+    text-align: right;
+    padding-right: 1.1rem;
+    color: #4A505A;
+    user-select: none;
+    font-size: 0.75rem;
+  }
+
+  /* Ghost completion text */
+  .ghost-completion {
+    color: #4f5b66;
+    position: relative;
+  }
+  .ghost-completion::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.08), transparent);
+    background-size: 200% 100%;
+    animation: ghostShimmer 3s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes ghostShimmer {
+    0% { background-position: -150% 0; }
+    100% { background-position: 150% 0; }
+  }
+
+  /* Blink cursor */
+  @keyframes blinkCursor {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  .cursor-caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background-color: #00F0FF;
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blinkCursor 1s infinite;
   }
 }
 

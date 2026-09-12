@@ -1,9 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+const DEFAULT_AVATAR = "https://ik.imagekit.io/9yt9khgb0/istockphoto-1451587807-612x612.jpg";
+
 const initialState = {
     user: null,
     err: null,
-    avatar: null,
+    avatar: DEFAULT_AVATAR,
     isLoading: true
 }
 
@@ -21,7 +23,7 @@ const authSlice = createSlice({
             state.err = action.payload;
         },
         setAvatar: (state, action) => {
-            state.avatar = action.payload;
+            state.avatar = action.payload || DEFAULT_AVATAR;
         }
     }
 })

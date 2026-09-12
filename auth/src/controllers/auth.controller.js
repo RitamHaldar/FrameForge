@@ -15,8 +15,8 @@ import {sendOtpforVerification} from "../config/queue.js"
 export async function Register(req, res) {
     const { username, email, password } = req.body;
 
-    if (!username || !email) {
-        return res.status(400).json({ message: "Username and email are required" });
+    if (!username || !email || !password) {
+        return res.status(400).json({ message: "Username, email and password are required" });
     }
 
     const existingUser = await User.findOne({
@@ -50,8 +50,8 @@ export async function Register(req, res) {
 export async function Login(req, res) {
     const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-        return res.status(400).json({ message: "Username, email and password are required" });
+    if ((!username && !email) || !password) {
+        return res.status(400).json({ message: "Username or email, and password are required" });
     }
 
     const user = await User.findOne({

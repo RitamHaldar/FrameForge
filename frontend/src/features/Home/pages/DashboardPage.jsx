@@ -118,6 +118,7 @@ export default function DashboardPage() {
               aiEvents={homeState.aiEvents}
               isGenerating={homeState.isGenerating}
               sendAiMessage={homeState.sendAiMessage}
+              stopAiResponse={homeState.stopAiResponse}
               onMenuClick={() => setIsMenuOpen(true)}
             />
           </Panel>

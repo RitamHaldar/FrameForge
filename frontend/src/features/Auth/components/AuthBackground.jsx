@@ -1,165 +1,275 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Terminal } from 'lucide-react';
-
-const CODE_SNIPPETS = [
-  "// FrameForge OS v3.0.0",
-  "// Initializing authentication module...",
-  "",
-  "const engine = new ForgeEngine({",
-  "  mode: 'advanced',",
-  "  gpuAcceleration: true,",
-  "  theme: 'dark-matter'",
-  "});",
-  "",
-  "await engine.connect({",
-  "  protocol: 'wss',",
-  "  endpoint: '/api/v1/stream'",
-  "});",
-  "",
-  "console.log('Ready to forge.');",
-];
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 
 export default function AuthBackground() {
-  const [displayedLines, setDisplayedLines] = useState([]);
-  const [currentLineIndex, setCurrentLineIndex] = useState(0);
-  const [currentCharIndex, setCurrentCharIndex] = useState(0);
+  const mountRef = useRef(null);
 
   useEffect(() => {
-    if (currentLineIndex >= CODE_SNIPPETS.length) {
-      // Loop: Wait 3 seconds, then restart the animation
-      const loopTimeout = setTimeout(() => {
-        setDisplayedLines([]);
-        setCurrentLineIndex(0);
-        setCurrentCharIndex(0);
-      }, 3000);
-      return () => clearTimeout(loopTimeout);
+    const container = mountRef.current;
+    if (!container) return;
+
+    // 1. Scene
+    const scene = new THREE.Scene();
+
+    // 2. Camera
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 70;
+
+    // 3. Renderer with high performance & alpha
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    container.appendChild(renderer.domElement);
+
+    // 4. Holographic Cryptographic Core Group
+    const coreGroup = new THREE.Group();
+    scene.add(coreGroup);
+
+    // Inner wireframe icosahedron
+    const icoGeo = new THREE.IcosahedronGeometry(13, 1);
+    const icoWire = new THREE.WireframeGeometry(icoGeo);
+    const icoMat = new THREE.LineBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.AdditiveBlending,
+    });
+    const icosahedron = new THREE.LineSegments(icoWire, icoMat);
+    coreGroup.add(icosahedron);
+
+    // Outer cryptographic orbit ring
+    const torusGeo = new THREE.TorusGeometry(22, 0.22, 16, 100);
+    const torusMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.12,
+      wireframe: true,
+      blending: THREE.AdditiveBlending,
+    });
+    const torusRing = new THREE.Mesh(torusGeo, torusMat);
+    torusRing.rotation.x = Math.PI / 3;
+    coreGroup.add(torusRing);
+
+    // Secondary tilted ring
+    const torusGeo2 = new THREE.TorusGeometry(26, 0.14, 16, 100);
+    const torusMat2 = new THREE.MeshBasicMaterial({
+      color: 0x34d399,
+      transparent: true,
+      opacity: 0.08,
+      wireframe: true,
+      blending: THREE.AdditiveBlending,
+    });
+    const torusRing2 = new THREE.Mesh(torusGeo2, torusMat2);
+    torusRing2.rotation.y = Math.PI / 4;
+    coreGroup.add(torusRing2);
+
+    // Position core in ambient background depth, gently offset to the right on desktop
+    const updateCorePosition = () => {
+      const isDesktop = window.innerWidth >= 1024;
+      coreGroup.position.set(isDesktop ? 16 : 0, 0, -10);
+    };
+    updateCorePosition();
+
+    // 5. Particle Constellation
+    const particleCount = 130;
+    const particleGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+
+    for (let i = 0; i < particleCount; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 150;
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 110;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 70;
+
+      velocities.push({
+        x: (Math.random() - 0.5) * 0.03,
+        y: (Math.random() - 0.5) * 0.03,
+        z: (Math.random() - 0.5) * 0.015,
+      });
     }
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
 
-    const currentLine = CODE_SNIPPETS[currentLineIndex];
+    // Particle Texture with Soft Glowing Dot
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, 'rgba(0, 240, 255, 0.9)');
+    grad.addColorStop(0.3, 'rgba(0, 240, 255, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 32, 32);
 
-    const typingInterval = setTimeout(() => {
-      if (currentCharIndex < currentLine.length) {
-        setDisplayedLines(prev => {
-          const newLines = [...prev];
-          if (newLines[currentLineIndex] === undefined) {
-            newLines[currentLineIndex] = '';
-          }
-          newLines[currentLineIndex] += currentLine[currentCharIndex];
-          return newLines;
-        });
-        setCurrentCharIndex(prev => prev + 1);
-      } else {
-        setCurrentLineIndex(prev => prev + 1);
-        setCurrentCharIndex(0);
+    const particleTexture = new THREE.CanvasTexture(canvas);
+    const particleMat = new THREE.PointsMaterial({
+      size: 2.0,
+      map: particleTexture,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+
+    // Inter-Particle Connecting Lines
+    const lineMat = new THREE.LineBasicMaterial({
+      color: 0x00f0ff,
+      transparent: true,
+      opacity: 0.07,
+      blending: THREE.AdditiveBlending,
+    });
+    const maxLineSegments = particleCount * 5;
+    const linePositions = new Float32Array(maxLineSegments * 6);
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+    const lines = new THREE.LineSegments(lineGeo, lineMat);
+    scene.add(lines);
+
+    // Mouse Parallax
+    let mouseX = 0;
+    let mouseY = 0;
+    let targetMouseX = 0;
+    let targetMouseY = 0;
+
+    const onMouseMove = (e) => {
+      targetMouseX = (e.clientX / window.innerWidth - 0.5) * 10;
+      targetMouseY = -(e.clientY / window.innerHeight - 0.5) * 10;
+    };
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+
+    // Viewport Resize
+    const onResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      updateCorePosition();
+    };
+    window.addEventListener('resize', onResize);
+
+    // Animation Loop
+    let animationFrameId;
+    const posAttr = particleGeo.attributes.position;
+    const linePosAttr = lineGeo.attributes.position;
+
+    const animate = () => {
+      mouseX += (targetMouseX - mouseX) * 0.04;
+      mouseY += (targetMouseY - mouseY) * 0.04;
+      camera.position.x = mouseX;
+      camera.position.y = mouseY;
+      camera.lookAt(0, 0, 0);
+
+      // Ambient rotation of central holographic core
+      coreGroup.rotation.y += 0.0025;
+      coreGroup.rotation.x += 0.0012;
+      torusRing.rotation.z += 0.003;
+      torusRing2.rotation.x -= 0.0025;
+
+      // Particle physics & boundary bounce
+      const array = posAttr.array;
+      for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3;
+        array[i3] += velocities[i].x;
+        array[i3 + 1] += velocities[i].y;
+        array[i3 + 2] += velocities[i].z;
+
+        if (array[i3] > 75 || array[i3] < -75) velocities[i].x *= -1;
+        if (array[i3 + 1] > 55 || array[i3 + 1] < -55) velocities[i].y *= -1;
+        if (array[i3 + 2] > 35 || array[i3 + 2] < -35) velocities[i].z *= -1;
       }
-    }, Math.random() * 30 + 10); // random typing speed
+      posAttr.needsUpdate = true;
 
-    return () => clearTimeout(typingInterval);
-  }, [currentLineIndex, currentCharIndex]);
+      // Connect proximate particles
+      let lineIdx = 0;
+      const lineArray = linePosAttr.array;
+      const maxDistance = 18;
+
+      for (let i = 0; i < particleCount; i++) {
+        for (let j = i + 1; j < particleCount; j++) {
+          const dx = array[i * 3] - array[j * 3];
+          const dy = array[i * 3 + 1] - array[j * 3 + 1];
+          const dz = array[i * 3 + 2] - array[j * 3 + 2];
+          const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+          if (dist < maxDistance && lineIdx < maxLineSegments * 6 - 6) {
+            lineArray[lineIdx++] = array[i * 3];
+            lineArray[lineIdx++] = array[i * 3 + 1];
+            lineArray[lineIdx++] = array[i * 3 + 2];
+
+            lineArray[lineIdx++] = array[j * 3];
+            lineArray[lineIdx++] = array[j * 3 + 1];
+            lineArray[lineIdx++] = array[j * 3 + 2];
+          }
+        }
+      }
+
+      for (let k = lineIdx; k < maxLineSegments * 6; k++) {
+        lineArray[k] = 0;
+      }
+      linePosAttr.needsUpdate = true;
+
+      renderer.render(scene, camera);
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    // Strict GPU Disposal & Cleanup
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('resize', onResize);
+
+      icoGeo.dispose();
+      icoWire.dispose();
+      icoMat.dispose();
+
+      torusGeo.dispose();
+      torusMat.dispose();
+      torusGeo2.dispose();
+      torusMat2.dispose();
+
+      particleGeo.dispose();
+      particleMat.dispose();
+      particleTexture.dispose();
+
+      lineGeo.dispose();
+      lineMat.dispose();
+
+      renderer.dispose();
+      if (container && renderer.domElement && container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+    };
+  }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
-      {/* Dynamic Animated Grid */}
-      <motion.div 
-        className="hidden md:block absolute inset-0 z-0 opacity-[0.035]"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, rgba(255, 255, 255, 0.15) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 1px, transparent 1px)
-          `,
-          backgroundSize: '60px 60px',
-        }}
-        animate={{
-          backgroundPosition: ["0px 0px", "60px 60px"]
-        }}
-        transition={{
-          duration: 30,
-          repeat: Infinity,
-          ease: "linear"
-        }}
-      />
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 bg-[#08090A]">
+      {/* Three.js Canvas Container */}
+      <div ref={mountRef} className="absolute inset-0 z-0" />
 
-      {/* Floating Glowing Orbs (Aurora Effect) */}
-      <motion.div
-        animate={{
-          x: [-120, 120, -120],
-          y: [-60, 120, -60],
-          scale: [1, 1.2, 1],
-        }}
-        transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className="hidden md:block absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] rounded-full bg-indigo-500/10 blur-[130px] z-0 pointer-events-none"
-      />
-      <motion.div
-        animate={{
-          x: [120, -120, 120],
-          y: [60, -120, 60],
-          scale: [1.2, 1, 1.2],
-        }}
-        transition={{
-          duration: 32,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className="hidden md:block absolute bottom-[-10%] right-[-10%] w-[55vw] h-[55vw] max-w-[700px] rounded-full bg-amber-500/5 blur-[150px] z-0 pointer-events-none"
-      />
-      <motion.div
-        animate={{
-          x: [60, -60, 60],
-          y: [-60, 60, -60],
-          scale: [1, 1.15, 1],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-        className="hidden md:block absolute top-[20%] right-[20%] w-[35vw] h-[35vw] max-w-[450px] rounded-full bg-violet-600/10 blur-[120px] z-0 pointer-events-none"
-      />
+      {/* Technical Grid & Ambient Dots */}
+      <div className="absolute inset-0 tech-grid opacity-35 z-10" />
+      <div className="absolute inset-0 tech-dots opacity-20 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_35%,#000_70%,transparent_100%)] z-10" />
 
-      {/* Subtle vignette/fade so it doesn't distract the form */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#050505]/70 to-[#050505] z-10" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(5,5,5,0.85)_100%)] z-10" />
+      {/* Atmospheric Ambient Glows */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] max-w-[600px] rounded-full bg-cyanAccent/[0.04] blur-[140px] z-10" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[55vw] h-[55vw] max-w-[700px] rounded-full bg-emerald-500/[0.03] blur-[160px] z-10" />
 
-      {/* Terminal Content */}
-      <div className="hidden md:block absolute inset-0 p-8 lg:p-24 opacity-80 font-mono-data text-sm md:text-base text-primary/70 z-0">
-        <div className="flex items-center gap-2 mb-16 opacity-70 border-b border-outline-variant/30 pb-4 max-w-2xl">
-          <Terminal className="w-5 h-5" /> 
-          <span>frameforge_os // auth_module</span>
-        </div>
-        
-        <div className="space-y-1 text-primary/60 drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]">
-          {displayedLines.length === 0 && (
-            <motion.div
-              animate={{ opacity: [1, 0] }}
-              transition={{ repeat: Infinity, duration: 0.8 }}
-              className="inline-block w-2 h-4 bg-primary align-middle"
-            />
-          )}
-          {displayedLines.map((line, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
-              className="whitespace-pre"
-            >
-              <span>{line}</span>
-              {idx === displayedLines.length - 1 && (
-                <motion.div
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ repeat: Infinity, duration: 0.8 }}
-                  className="inline-block w-2 h-4 bg-primary align-middle ml-1"
-                />
-              )}
-            </motion.div>
-          ))}
-        </div>
-      </div>
+      {/* Vignette Gradients */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#08090A]/40 to-[#08090A]/90 z-10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(8,9,10,0.75)_100%)] z-10" />
     </div>
   );
 }

@@ -41,6 +41,12 @@ spec:
                 secretKeyRef:
                   name: ai-secret
                   key: GROK_API_KEY
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-secret
+                  key: GROQ_API_KEY
+
           livenessProbe:
             httpGet:
               path: /api/ai/healthz

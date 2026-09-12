@@ -1,5 +1,5 @@
 import express from "express";
-import { agent1, agent2, agent3 } from "../agents/agent.code.js";
+import { agent1, agent2, agent3, optimizeAgent } from "../agents/agent.code.js";
 import { CompletionCopilot } from "monacopilot";
 import { config } from "../config/config.js";
 const router = express.Router();
@@ -8,14 +8,16 @@ const copilot = new CompletionCopilot(config.MISTRALKEY, {
     model: 'codestral',
 });
 router.post("/invoke", async (req, res) => {
-    const { message, projectId, agentNo } = req.body
+    const { message, projectId, agentNo } = req.body;
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive'
     });
     try {
-        const agent = agentNo == 1 ? agent1 : agent2;
+        let agent = agent1;
+        if (Number(agentNo) === 2) agent = agent2;
+        if (Number(agentNo) === 3) agent = agent3;
 
         const response = await agent.stream({
             messages: [{
@@ -29,7 +31,7 @@ router.post("/invoke", async (req, res) => {
             streamMode: "custom"
         })
         for await (const chunk of response) {
-            res.write(`data: ${JSON.stringify(chunk)}\n\n`)
+            res.write(`data: ${JSON.stringify(chunk)}\n\n`);
         }
         res.end();
     } catch (error) {
@@ -56,9 +58,10 @@ router.post("/optimize-code", async (req, res) => {
                         - Language: ${language || 'javascript'}
                         ### CODE TO OPTIMIZE:
                         ${code}`
-        const response = await agent3.invoke({
+        const response = await optimizeAgent.invoke({
             messages: [{ role: "user", content: promt }]
         })
+
         let optimizedCode = response.messages[response.messages.length - 1].content || "";
 
         // Clean up markdown fences if model mistakenly includes them

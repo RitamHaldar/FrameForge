@@ -4,11 +4,11 @@ import gsap from 'gsap';
 import { Terminal, Shield, Cpu, RefreshCw, Layers } from 'lucide-react';
 
 const BOOT_LOGS = [
-  { text: "INITIALIZING FRAMEFORGE CORE ENGINE...", icon: <Cpu className="w-3.5 h-3.5 text-primary" /> },
-  { text: "ESTABLISHING SECURE API TUNNEL...", icon: <Shield className="w-3.5 h-3.5 text-primary" /> },
-  { text: "MOUNTING TELEMETRY SYSTEMS...", icon: <RefreshCw className="w-3.5 h-3.5 text-primary animate-spin" style={{ animationDuration: '4s' }} /> },
-  { text: "RESOLVING USER CONTEXT & SESSION...", icon: <Layers className="w-3.5 h-3.5 text-primary" /> },
-  { text: "SYSTEM STATUS: SECURE", icon: <Terminal className="w-3.5 h-3.5 text-green-500" /> }
+  { text: "INITIALIZING FRAMEFORGE CORE ENGINE...", icon: <Cpu className="w-3.5 h-3.5 text-cyanAccent" /> },
+  { text: "ESTABLISHING SECURE API TUNNEL...", icon: <Shield className="w-3.5 h-3.5 text-cyanAccent" /> },
+  { text: "MOUNTING TELEMETRY SYSTEMS...", icon: <RefreshCw className="w-3.5 h-3.5 text-cyanAccent animate-spin" style={{ animationDuration: '4s' }} /> },
+  { text: "RESOLVING USER CONTEXT & SESSION...", icon: <Layers className="w-3.5 h-3.5 text-cyanAccent" /> },
+  { text: "SYSTEM STATUS: SECURE", icon: <Terminal className="w-3.5 h-3.5 text-emerald-400" /> }
 ];
 
 export default function LoadingPage() {
@@ -39,7 +39,7 @@ export default function LoadingPage() {
       } else {
         clearInterval(interval);
       }
-    }, 450); // display a new log line every 450ms
+    }, 450);
 
     return () => clearInterval(interval);
   }, []);
@@ -47,23 +47,24 @@ export default function LoadingPage() {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[999] bg-black text-on-background flex flex-col items-center justify-center font-body-md overflow-hidden"
+      className="fixed inset-0 z-[999] bg-obsidian text-textPrimary flex flex-col items-center justify-center font-sans overflow-hidden select-none"
     >
-      {/* Ambient glowing background circles */}
+      {/* Ambient background glows & tech grid */}
+      <div className="absolute inset-0 tech-grid opacity-30 pointer-events-none z-0" />
       <div className="absolute inset-0 pointer-events-none z-0">
         <motion.div
           animate={{
             scale: [1, 1.1, 1],
-            opacity: [0.03, 0.06, 0.03]
+            opacity: [0.03, 0.08, 0.03]
           }}
           transition={{
             duration: 8,
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[140px]"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyanAccent/10 rounded-full blur-[140px]"
         />
-        <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] bg-tertiary-container/3 rounded-full blur-[100px]" />
+        <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] bg-emerald-500/[0.03] rounded-full blur-[100px]" />
       </div>
 
       {/* Futuristic central core loader */}
@@ -73,14 +74,14 @@ export default function LoadingPage() {
           {/* Outer animated rotating HUD ring */}
           <div
             ref={ringRef}
-            className="absolute inset-0 border border-dashed border-primary/20 rounded-full"
+            className="absolute inset-0 border border-dashed border-cyanAccent/30 rounded-full"
           />
 
           {/* Secondary counter-rotating ring */}
           <motion.div
             animate={{ rotate: -360 }}
-            transition={{ repeat: Infinity, duration: 6, ease: 'linear' }}
-            className="absolute w-28 h-28 border border-dotted border-white/10 rounded-full"
+            transition={{ repeat: Infinity, duration: 7, ease: 'linear' }}
+            className="absolute w-28 h-28 border border-dotted border-white/15 rounded-full"
           />
 
           {/* Glowing central core */}
@@ -88,9 +89,9 @@ export default function LoadingPage() {
             animate={{
               scale: [0.95, 1.05, 0.95],
               boxShadow: [
-                '0 0 20px rgba(255, 255, 255, 0.05)',
-                '0 0 40px rgba(255, 255, 255, 0.15)',
-                '0 0 20px rgba(255, 255, 255, 0.05)'
+                '0 0 20px rgba(0, 240, 255, 0.1)',
+                '0 0 45px rgba(0, 240, 255, 0.3)',
+                '0 0 20px rgba(0, 240, 255, 0.1)'
               ]
             }}
             transition={{
@@ -98,38 +99,40 @@ export default function LoadingPage() {
               repeat: Infinity,
               ease: 'easeInOut'
             }}
-            className="w-20 h-20 rounded-2xl bg-white/5 border border-white/15 flex items-center justify-center backdrop-blur-xl shadow-inner relative"
+            className="w-20 h-20 rounded-2xl bg-[#0F1216] border border-cyanAccent/30 flex items-center justify-center backdrop-blur-xl shadow-inner relative"
           >
             {/* Spinning inline loader */}
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
-              className="absolute w-14 h-14 border-t border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full"
+              className="absolute w-14 h-14 border-2 border-t-cyanAccent border-r-transparent border-b-transparent border-l-transparent rounded-full"
             />
             
-            <img src="/logo/logo.png" className="w-10 h-10 object-contain" alt="Core" />
+            <div className="w-8 h-8 rounded-lg bg-[#15181C] border border-cyanAccent/50 flex items-center justify-center relative overflow-hidden shadow-inner">
+              <div className="w-3.5 h-3.5 border-2 border-cyanAccent rotate-45 animate-pulse" />
+            </div>
           </motion.div>
         </div>
       </div>
 
       {/* Terminal log panel */}
-      <div className="w-[90%] max-w-lg p-6 rounded-2xl border border-white/5 bg-[#090909]/60 backdrop-blur-xl glass-panel relative z-10">
+      <div className="w-[90%] max-w-lg p-6 rounded-2xl border border-white/[0.08] bg-[#0A0C0E]/80 backdrop-blur-xl relative z-10 shadow-2xl">
         
         {/* Terminal Header */}
-        <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/5">
-          <div className="flex items-center gap-2 font-mono-data text-[10px] text-on-surface-variant/40">
-            <Terminal size={12} className="text-primary/70 animate-pulse" />
-            <span>NEXUS_OS // BOOT_LOADER</span>
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-2 font-mono text-[10px] text-textMuted">
+            <Terminal size={12} className="text-cyanAccent animate-pulse" />
+            <span>FRAMEFORGE_KERNEL // BOOT_LOADER</span>
           </div>
-          <div className="flex gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/10"></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-white/10"></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-white/10"></div>
+          <div className="flex gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-rose-500/70"></div>
+            <div className="w-2 h-2 rounded-full bg-amber-500/70"></div>
+            <div className="w-2 h-2 rounded-full bg-emerald-500/70"></div>
           </div>
         </div>
 
         {/* Timeline body */}
-        <div className="space-y-2.5 font-mono-data text-xs min-h-[120px] select-none">
+        <div className="space-y-2.5 font-mono text-xs min-h-[120px] select-none">
           <AnimatePresence>
             {visibleLogs.map((log, idx) => (
               <motion.div
@@ -137,9 +140,9 @@ export default function LoadingPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.25, ease: 'easeOut' }}
-                className="flex items-center gap-3 text-on-surface-variant/80"
+                className="flex items-center gap-3 text-textSecondary"
               >
-                <div className="flex-shrink-0 w-5 h-5 rounded bg-white/5 border border-white/5 flex items-center justify-center">
+                <div className="flex-shrink-0 w-5 h-5 rounded-lg bg-white/5 border border-white/5 flex items-center justify-center">
                   {log.icon}
                 </div>
                 <span className="font-light tracking-wide">{log.text}</span>
@@ -149,11 +152,11 @@ export default function LoadingPage() {
         </div>
 
         {/* Status indicator bar */}
-        <div className="mt-6 flex items-center justify-between text-[9px] font-mono-data text-on-surface-variant/40 pt-3 border-t border-white/5">
+        <div className="mt-6 flex items-center justify-between text-[10px] font-mono text-textMuted pt-3 border-t border-white/[0.06]">
           <div className="flex items-center gap-1.5">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
             </span>
             <span>SECURE VERIFICATION BRIDGE ACTIVE</span>
           </div>

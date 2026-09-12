@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, BrainCircuit, Activity, Zap, Lock, Server, Mail, Terminal, 
   Code2, Check, ChevronRight, Play, RefreshCw, Cpu, Database, 
-  Layers, Settings, Shield, ExternalLink, Globe, FileCode 
+  Layers, Settings, Shield, ExternalLink, Globe, FileCode,
+  Copy, Sparkles, ArrowUp, CheckCircle2, AlertCircle, FolderTree, Network
 } from 'lucide-react';
 import Lenis from 'lenis';
 
@@ -13,16 +14,15 @@ const SOLUTIONS = [
     id: 'ai-orchestrator',
     title: 'AI Component Synthesis',
     tagline: 'LangChain & Socket.IO Orchestration',
-    icon: <BrainCircuit className="w-6 h-6" />,
+    icon: <BrainCircuit className="w-5 h-5 text-cyanAccent" />,
     shortDesc: 'Low-latency real-time streaming of JIT-completed React components validated by strict Zod schema constraints.',
     badge: 'LangChain + Socket.IO',
-    color: 'from-primary/10 to-primary/5',
-    borderColor: 'group-hover:border-primary/45',
-    iconBg: 'bg-primary/10 text-primary border border-primary/20',
+    accentColor: '#00F0FF',
+    accentClass: 'text-cyanAccent border-cyanAccent/30 bg-cyanAccent/10',
     readmeRef: 'ai-worker/README.md',
     details: {
-      problem: 'Traditional AI generation workflows suffer from slow turnaround times, lacking real-time developer feedback, and exposing unstructured code output prone to system crashes.',
-      solution: 'FrameForge decouples prompt interpretation from code compilation. The Node.js Express service acts as a broker using LangChain for multi-model inference and streams code snippets over low-latency Socket.IO WebSockets directly to active workspaces, checking formatting at compile-time.',
+      problem: 'Traditional AI generation workflows suffer from slow turnaround times, lacking real-time developer feedback, and exposing unstructured code output prone to syntax breaks and system crashes.',
+      solution: 'FrameForge decouples prompt interpretation from code compilation. The Node.js Express service acts as a broker using LangChain for multi-model inference and streams code snippets over low-latency Socket.IO WebSockets directly to active workspaces, validating AST structures at compile-time.',
       techStack: [
         { name: 'Inference Orchestrator', value: 'LangChain Node.js CLI' },
         { name: 'Model Providers', value: 'OpenAI, Groq, Mistral AI' },
@@ -46,12 +46,11 @@ const SOLUTIONS = [
     id: 'sandbox-engine',
     title: 'Isolated Sandboxing',
     tagline: 'Dynamic Pod Allocation & High-Speed Sync',
-    icon: <Server className="w-6 h-6" />,
+    icon: <Server className="w-5 h-5 text-emerald-400" />,
     shortDesc: 'On-demand spawning of isolated container workspaces inside Kubernetes clusters with aggressive HMR watcher tuning.',
     badge: 'K8s + Vite HMR',
-    color: 'from-secondary-container/10 to-transparent',
-    borderColor: 'group-hover:border-secondary-container/45',
-    iconBg: 'bg-secondary-container/10 text-secondary-container border border-secondary-container/20',
+    accentColor: '#34D399',
+    accentClass: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10',
     readmeRef: 'Sandbox/README.md',
     details: {
       problem: 'Hosting concurrent browser-based developer previews creates heavy server resource consumption, security exploits, and sluggish hot module replacements.',
@@ -80,12 +79,11 @@ const SOLUTIONS = [
     id: 'auth-pipeline',
     title: 'Async Verification Pipeline',
     tagline: 'RabbitMQ Message Brokering & OTP Deliveries',
-    icon: <Shield className="w-6 h-6" />,
+    icon: <Shield className="w-5 h-5 text-purple-400" />,
     shortDesc: 'High-throughput secure registration flow utilizing decoupled auth servers, RabbitMQ queues, and OAuth2 Gmail client workers.',
     badge: 'RabbitMQ + Gmail OAuth2',
-    color: 'from-tertiary-container/10 to-transparent',
-    borderColor: 'group-hover:border-tertiary-container/45',
-    iconBg: 'bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20',
+    accentColor: '#C084FC',
+    accentClass: 'text-purple-400 border-purple-400/30 bg-purple-400/10',
     readmeRef: 'auth/README.md & notification/README.md',
     details: {
       problem: 'Sending verification emails synchronously during registration slows user requests, leading to server timeouts if mail transports act sluggish.',
@@ -116,7 +114,7 @@ const PIPELINE_STEPS = {
     { name: 'Browser Client', desc: 'Dispatches UI generation prompt requests', icon: <Globe className="w-4 h-4" /> },
     { name: 'LangChain AI Agent', desc: 'Orchestrates multi-model code synthesis plan', icon: <Cpu className="w-4 h-4" /> },
     { name: 'Zod Validator', desc: 'Verifies structured JSON file patch schemas', icon: <Check className="w-4 h-4" /> },
-    { name: 'Vite Sandbox HMR', desc: 'Syncs code JIT & reloads client at 144 FPS', icon: <Zap className="w-4 h-4" /> }
+    { name: 'Vite Sandbox HMR', desc: 'Syncs code JIT & reloads client in <200ms', icon: <Zap className="w-4 h-4" /> }
   ],
   'sandbox-engine': [
     { name: 'Sandbox Controller', desc: 'Performs identity & DB project registration', icon: <Database className="w-4 h-4" /> },
@@ -138,32 +136,71 @@ export default function SolutionsPage() {
   const [simState, setSimState] = useState('idle'); // idle, running, completed
   const [simLogs, setSimLogs] = useState([]);
   const [activeNodeIndex, setActiveNodeIndex] = useState(-1);
+  const [readingProgress, setReadingProgress] = useState(0);
+  const [copiedItem, setCopiedItem] = useState('');
+
   const scrollContainerRef = useRef(null);
   const logTerminalEndRef = useRef(null);
   const terminalContainerRef = useRef(null);
+  const ambientLightRef = useRef(null);
+  const lenisRef = useRef(null);
+  const timeoutsRef = useRef([]);
 
+  // GPU-Accelerated Cursor Tracking Light
+  useEffect(() => {
+    const onMouseMove = (e) => {
+      if (ambientLightRef.current) {
+        ambientLightRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
+      }
+    };
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', onMouseMove);
+  }, []);
+
+  // Lenis Smooth Scroll
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 0.9,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: 'vertical',
       gestureOrientation: 'vertical',
       smoothWheel: true,
-      wheelMultiplier: 1,
+      wheelMultiplier: 1.0,
       smoothTouch: false,
-      touchMultiplier: 2,
+      touchMultiplier: 1.5,
+    });
+    lenisRef.current = lenis;
+
+    lenis.on('scroll', (e) => {
+      if (e.limit > 0) {
+        setReadingProgress(Math.min(100, Math.max(0, (e.scroll / e.limit) * 100)));
+      }
     });
 
+    let rafId;
     function raf(time) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
-    return () => lenis.destroy();
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+    };
   }, []);
 
-  // Scroll to bottom of simulation logs terminal internally
+  // Cleanup simulation timeouts
+  const clearSimulationTimeouts = () => {
+    timeoutsRef.current.forEach(t => clearTimeout(t));
+    timeoutsRef.current = [];
+  };
+
+  useEffect(() => {
+    return () => clearSimulationTimeouts();
+  }, []);
+
+  // Auto-scroll simulation logs internally
   useEffect(() => {
     if (terminalContainerRef.current) {
       terminalContainerRef.current.scrollTo({
@@ -173,394 +210,644 @@ export default function SolutionsPage() {
     }
   }, [simLogs]);
 
-  // Run simulation sequence
+  // Run simulation sequence with realistic micro-delays
   const startSimulation = () => {
+    clearSimulationTimeouts();
     setSimState('running');
     setSimLogs([]);
     setActiveNodeIndex(0);
 
     const logSteps = {
       'ai-orchestrator': [
-        { text: '[system] Initializing LLM Orchestrator engine...', delay: 400, nodeIdx: 0 },
-        { text: '[system] Connecting to Socket.IO path /api/ai/socket.io... [OK]', delay: 800, nodeIdx: 0 },
-        { text: '[agent] User input received: "Build a premium glassmorphic button component"', delay: 1300, nodeIdx: 0 },
-        { text: '[agent] Analysing project context directories...', delay: 1800, nodeIdx: 1 },
-        { text: '[agent] Sending inference request to model: Groq LLaMA-3.1-70B...', delay: 2400, nodeIdx: 1 },
-        { text: '[model] Streaming token payload patch response...', delay: 3000, nodeIdx: 1 },
-        { text: '[validation] Synthesizing file patch: /src/components/GlassButton.jsx', delay: 3400, nodeIdx: 2 },
-        { text: '[validation] Enforcing Zod structure checks: verifying file actions... [Valid]', delay: 3900, nodeIdx: 2 },
-        { text: '[agent] Writing component file updates down socket connection... [Completed]', delay: 4400, nodeIdx: 2 },
-        { text: '[sandbox] Aggressive Vite watcher triggered hot reload... [Synced in 186ms]', delay: 5000, nodeIdx: 3 },
-        { text: '[system] Simulation finished. UI fully hydrated.', delay: 5400, nodeIdx: 3 }
+        { text: '[system] Initializing LLM Orchestrator engine...', delay: 350, nodeIdx: 0 },
+        { text: '[system] Connecting to Socket.IO path /api/ai/socket.io... [OK]', delay: 750, nodeIdx: 0 },
+        { text: '[agent] User prompt stream received: "Synthesize dark obsidian button component with ripple"', delay: 1250, nodeIdx: 0 },
+        { text: '[agent] Scanning AST project workspace tree...', delay: 1750, nodeIdx: 1 },
+        { text: '[agent] Transmitting inference payload to model: Groq LLaMA-3.3-70B...', delay: 2350, nodeIdx: 1 },
+        { text: '[model] Streaming token patch: 142 tokens/sec generated...', delay: 2950, nodeIdx: 1 },
+        { text: '[validation] Synthesizing file patch: /src/components/CyberButton.jsx', delay: 3450, nodeIdx: 2 },
+        { text: '[validation] Enforcing Zod structure checks: verifying AST exports... [Valid]', delay: 3950, nodeIdx: 2 },
+        { text: '[agent] Writing component file updates down socket connection... [Completed]', delay: 4450, nodeIdx: 2 },
+        { text: '[sandbox] Aggressive Vite watcher triggered hot reload... [Synced in 184ms]', delay: 4950, nodeIdx: 3 },
+        { text: '[system] Simulation finished. UI hydrated at 144 FPS.', delay: 5350, nodeIdx: 3 }
       ],
       'sandbox-engine': [
-        { text: '[service] POST /api/sandbox/start received... auth token checked', delay: 400, nodeIdx: 0 },
-        { text: '[service] Connecting to Kubernetes Cluster API...', delay: 800, nodeIdx: 0 },
-        { text: '[rbac] ServiceAccount permissions verified... [Authorized]', delay: 1200, nodeIdx: 0 },
-        { text: '[service] Spawning Isolated Container Pod: "sandbox-usr-nexus"...', delay: 1700, nodeIdx: 1 },
-        { text: '[k8s] Mounting node-pty execution Agent container...', delay: 2200, nodeIdx: 1 },
-        { text: '[agent] Initializing shell terminal controller & filesystem monitor...', delay: 2700, nodeIdx: 2 },
-        { text: '[k8s] Allocation of Service IP bindings mapping target: 3000 -> 80...', delay: 3200, nodeIdx: 2 },
-        { text: '[router] Gateway proxy bound subdomain "*.preview.localhost"...', delay: 3800, nodeIdx: 3 },
-        { text: '[agent] Cloned react19-vite8-tailwind4 boilerplate app template successfully...', delay: 4300, nodeIdx: 3 },
-        { text: '[agent] Vite watcher configured with polling interval: 1000ms... [Ready]', delay: 4900, nodeIdx: 3 },
-        { text: '[system] Sandbox online. Preview URL: http://nexus-workspace.preview.localhost', delay: 5400, nodeIdx: 3 }
+        { text: '[service] POST /api/sandbox/start received... validating session credentials', delay: 350, nodeIdx: 0 },
+        { text: '[service] Connecting to Kubernetes Cluster API...', delay: 750, nodeIdx: 0 },
+        { text: '[rbac] ServiceAccount permissions verified... [Authorized]', delay: 1150, nodeIdx: 0 },
+        { text: '[service] Spawning Isolated Container Pod: "sandbox-usr-alpha-09"...', delay: 1650, nodeIdx: 1 },
+        { text: '[k8s] Mounting node-pty execution Agent container...', delay: 2150, nodeIdx: 1 },
+        { text: '[agent] Initializing shell pseudo-terminal controller & filesystem monitor...', delay: 2650, nodeIdx: 2 },
+        { text: '[k8s] Allocation of Service IP bindings mapping target: 3000 -> 80...', delay: 3150, nodeIdx: 2 },
+        { text: '[router] Gateway proxy bound subdomain "*.preview.localhost"...', delay: 3750, nodeIdx: 3 },
+        { text: '[agent] Cloned react19-vite8-tailwind4 boilerplate app template successfully...', delay: 4250, nodeIdx: 3 },
+        { text: '[agent] Vite watcher configured with polling interval: 1000ms... [Ready]', delay: 4850, nodeIdx: 3 },
+        { text: '[system] Sandbox online. Preview URL: http://alpha-09.preview.localhost', delay: 5350, nodeIdx: 3 }
       ],
       'auth-pipeline': [
-        { text: '[auth] POST /api/auth/register triggered... parsing username/password', delay: 400, nodeIdx: 0 },
-        { text: '[auth] Pre-save database middleware active: hashing password via bcrypt...', delay: 800, nodeIdx: 0 },
-        { text: '[auth] Database User record created. OTP code generated: 482019', delay: 1300, nodeIdx: 0 },
-        { text: '[queue] Publishing event to AUTH_NOTIFICATION_QUEUE on CloudAMQP...', delay: 1800, nodeIdx: 1 },
-        { text: '[broker] RabbitMQ acknowledged message receipt... [Queue size: 1]', delay: 2300, nodeIdx: 1 },
-        { text: '[notification] Background consumer thread reading queue payload...', delay: 2900, nodeIdx: 2 },
-        { text: '[notification] Refreshing Google OAuth2 secure credentials...', delay: 3400, nodeIdx: 2 },
-        { text: '[notification] Compiling premium dark-mode inline email template...', delay: 3900, nodeIdx: 2 },
-        { text: '[notification] Secure MIME-base64 payload transmitted via Gmail Client APIs...', delay: 4500, nodeIdx: 3 },
-        { text: '[queue] Mail dispatch successful. Queue message acknowledged and purged.', delay: 5000, nodeIdx: 3 },
-        { text: '[system] Pipeline clear. Client auto-tabbing Verify OTP inputs active.', delay: 5400, nodeIdx: 3 }
+        { text: '[auth] POST /api/auth/register triggered... parsing username/password payload', delay: 350, nodeIdx: 0 },
+        { text: '[auth] Pre-save database middleware active: hashing credentials via bcryptjs (10 rounds)...', delay: 750, nodeIdx: 0 },
+        { text: '[auth] Database User record created. Verification OTP generated: 792401', delay: 1250, nodeIdx: 0 },
+        { text: '[queue] Publishing payload to AUTH_NOTIFICATION_QUEUE on CloudAMQP...', delay: 1750, nodeIdx: 1 },
+        { text: '[broker] RabbitMQ acknowledged message receipt... [Queue size: 1]', delay: 2250, nodeIdx: 1 },
+        { text: '[notification] Background consumer worker reading queue payload...', delay: 2850, nodeIdx: 2 },
+        { text: '[notification] Refreshing Google OAuth2 secure mailer credentials...', delay: 3350, nodeIdx: 2 },
+        { text: '[notification] Compiling premium dark-mode inline HTML email template...', delay: 3850, nodeIdx: 2 },
+        { text: '[notification] Secure MIME-base64 envelope dispatched via Gmail API...', delay: 4450, nodeIdx: 3 },
+        { text: '[queue] Mail delivery confirmed. channel.ack(msg) executed.', delay: 4950, nodeIdx: 3 },
+        { text: '[system] Pipeline clear. Session cookie set with HttpOnly, Secure flags.', delay: 5350, nodeIdx: 3 }
       ]
     };
 
     const steps = logSteps[activeSol];
     steps.forEach((step) => {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         setSimLogs(prev => [...prev, step.text]);
         setActiveNodeIndex(step.nodeIdx);
         if (step.text.includes('Simulation finished') || step.text.includes('Sandbox online') || step.text.includes('Pipeline clear')) {
           setSimState('completed');
         }
       }, step.delay);
+      timeoutsRef.current.push(timer);
     });
+  };
+
+  const handleCopyText = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedItem(id);
+    setTimeout(() => setCopiedItem(''), 2000);
+  };
+
+  const handleCopyTerminalLogs = () => {
+    if (simLogs.length === 0) return;
+    navigator.clipboard.writeText(simLogs.join('\n'));
+    setCopiedItem('terminal-logs');
+    setTimeout(() => setCopiedItem(''), 2000);
   };
 
   const selectedSolution = SOLUTIONS.find(s => s.id === activeSol);
 
   return (
-    <div className="min-h-screen w-full bg-background text-on-background relative font-body-md flex flex-col selection:bg-primary-container selection:text-on-primary-container">
+    <div className="min-h-screen w-full bg-obsidian text-textPrimary relative font-sans flex flex-col selection:bg-cyanAccent/20 selection:text-white antialiased">
       
-      {/* Dynamic Background Atmosphere */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-primary/4 rounded-full blur-[130px] animate-pulse" style={{ animationDuration: '10s' }} />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-tertiary-container/3 rounded-full blur-[150px] animate-pulse" style={{ animationDuration: '15s' }} />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGcgc3Ryb2tlPSJyZ2JhKDI1NSwgMjU1LCAyNTUsIDAuMDMpIiBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwb2x5Z29uIHBvaW50cz0iMCA2MCA2MCA2MCA2MCAwIi8+PC9nPjwvc3ZnPg==')] opacity-30"></div>
-      </div>
+      {/* GPU-Accelerated Cursor Tracking Light */}
+      <div
+        ref={ambientLightRef}
+        className="fixed -top-[275px] -left-[275px] w-[550px] h-[550px] rounded-full pointer-events-none z-0 opacity-40 will-change-transform"
+        style={{
+          background: 'radial-gradient(circle, rgba(0, 240, 255, 0.08) 0%, rgba(15, 23, 42, 0) 70%)',
+          transform: 'translate3d(-999px, -999px, 0)'
+        }}
+      />
 
-      {/* Solutions Header Nav */}
-      <header className="sticky top-0 z-40 w-full bg-background/80 border-b border-outline-variant/15 backdrop-blur-xl px-6 md:px-12 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <button
+      {/* Technical Background Grid & Ambient Dots */}
+      <div className="fixed inset-0 tech-grid pointer-events-none z-0 opacity-40"></div>
+      <div className="fixed inset-0 tech-dots pointer-events-none z-0 opacity-20 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_35%,#000_70%,transparent_100%)]"></div>
+
+      {/* Subtle Top Horizon Volumetric Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[320px] bg-gradient-to-b from-cyanAccent/5 to-transparent rounded-full blur-3xl pointer-events-none z-0"></div>
+
+      {/* SOLUTIONS HEADER */}
+      <header className="sticky top-0 z-40 w-full bg-[#0D0F11]/90 border-b border-white/[0.08] backdrop-blur-xl px-4 sm:px-8 py-3 flex items-center justify-between shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <div className="flex items-center space-x-3 sm:space-x-5">
+          {/* Back to Landing Button */}
+          <motion.button
+            whileHover={{ x: -2 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => navigate('/')}
-            className="group flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant/20 hover:border-primary/40 hover:bg-primary/5 text-xs text-on-surface-variant font-medium tracking-wide transition-all cursor-pointer select-none active:scale-95 bg-surface/5"
+            className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/[0.08] hover:border-cyanAccent/40 bg-white/[0.02] hover:bg-white/[0.06] text-xs font-mono text-textSecondary hover:text-white transition-all cursor-pointer"
           >
-            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back to Landing</span>
-          </button>
+            <ArrowLeft size={13} className="text-cyanAccent transition-transform duration-200 group-hover:-translate-x-0.5" />
+            <span className="hidden sm:inline">Landing</span>
+          </motion.button>
           
-          <div className="h-4 w-px bg-outline-variant/30 hidden sm:block" />
+          <div className="h-4 w-px bg-white/10 hidden sm:block" />
 
-          <div className="items-center gap-2.5 hidden sm:flex">
-            <Layers className="w-4 h-4 text-primary" />
-            <span className="font-display-lg text-sm font-bold text-white tracking-widest uppercase">System Solutions</span>
+          {/* Minimalist Brand Logo */}
+          <div 
+            onClick={() => navigate('/')}
+            className="flex items-center space-x-2.5 cursor-pointer group"
+          >
+            <div className="w-6 h-6 rounded bg-[#15181C] border border-white/15 flex items-center justify-center relative overflow-hidden transition-all duration-200 group-hover:border-cyanAccent/40 shadow-inner">
+              <div className="w-3 h-3 border border-cyanAccent rotate-45 transition-transform duration-300 group-hover:rotate-90"></div>
+            </div>
+            <span className="text-sm font-semibold tracking-tight text-white group-hover:text-cyanAccent/90 transition-colors">FrameForge</span>
+            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium tracking-wider bg-cyanAccent/10 border border-cyanAccent/20 text-cyanAccent shadow-[0_0_8px_rgba(0,240,255,0.15)]">
+              SOLUTIONS
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button 
+        <div className="flex items-center gap-2 sm:gap-3">
+          <motion.button 
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => navigate('/docs')}
-            className="px-4 py-2 rounded-full border border-outline-variant/20 hover:border-primary/40 hover:bg-primary/5 text-xs text-on-surface-variant font-medium transition-all cursor-pointer backdrop-blur-md"
+            className="px-3.5 py-1.5 rounded-full border border-white/[0.08] hover:border-cyanAccent/40 bg-white/[0.02] hover:bg-white/[0.06] text-xs text-textSecondary hover:text-white font-mono transition-all cursor-pointer"
           >
-            Developer Docs
-          </button>
-          <button 
+            Documentation
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => navigate('/projects')}
-            className="px-4 py-2 rounded-full bg-primary text-background hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] text-xs font-semibold transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-full bg-cyanAccent text-[#08090A] hover:bg-cyanAccent/90 hover:shadow-[0_0_20px_rgba(0,240,255,0.3)] text-xs font-semibold tracking-tight transition-all cursor-pointer font-sans"
           >
             Launch Space
-          </button>
+          </motion.button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main
-        className="flex-1 w-full px-6 md:px-16 py-12 z-10 max-w-7xl mx-auto"
-      >
-        {/* Header Title Hero */}
-        <section className="mb-16 text-center lg:text-left">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl text-on-surface font-bold mb-4 tracking-tight leading-[1.1]">
-            Engineered <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-outline-variant">Enterprise Solutions.</span>
+      {/* Top Reading Progress Bar */}
+      <div className="w-full h-[2px] bg-white/[0.04] relative z-30">
+        <div
+          className="h-full bg-gradient-to-r from-cyan-400 to-cyanAccent transition-all duration-100 ease-out"
+          style={{ width: `${readingProgress}%` }}
+        />
+      </div>
+
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 w-full px-4 sm:px-8 lg:px-12 py-10 z-10 max-w-7xl mx-auto space-y-12">
+        
+        {/* Header Hero Banner */}
+        <section className="text-center sm:text-left space-y-3 pt-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyanAccent/20 bg-cyanAccent/10 text-cyanAccent text-[11px] font-mono uppercase tracking-wider shadow-[0_0_12px_rgba(0,240,255,0.12)]">
+            <Sparkles size={11} className="animate-spin" style={{ animationDuration: '6s' }} />
+            <span>Enterprise Architecture Solutions</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl text-white font-extrabold tracking-tight leading-[1.1]">
+            Engineered <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-cyanAccent/90 to-cyanAccent">Cloud Compute.</span>
           </h1>
-          <p className="text-on-surface-variant/70 text-lg md:text-xl font-light max-w-3xl leading-relaxed">
-            Explore how FrameForge maps isolated containers, RabbitMQ queues, and LangChain model streams into a seamless, high-performance developer sandbox.
+          <p className="text-textSecondary text-sm sm:text-base font-light max-w-3xl leading-relaxed">
+            Explore how FrameForge orchestrates isolated Kubernetes microVM pods, asynchronous RabbitMQ message queues, and LangChain model pipelines into an ultra-fast real-time developer environment.
           </p>
         </section>
 
-        {/* Solution Selector Cards Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {/* 3 Solution Selector Cards */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {SOLUTIONS.map((sol) => {
             const isSelected = activeSol === sol.id;
             return (
-              <button
+              <motion.button
                 key={sol.id}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
+                  clearSimulationTimeouts();
                   setActiveSol(sol.id);
                   setSimState('idle');
                   setSimLogs([]);
                   setActiveNodeIndex(-1);
                 }}
-                className={`group text-left p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden backdrop-blur-sm cursor-pointer ${
+                className={`group text-left p-5 sm:p-6 rounded-2xl border transition-all duration-300 relative overflow-hidden backdrop-blur-xl cursor-pointer ${
                   isSelected 
-                    ? 'bg-surface-container/60 border-primary/45 shadow-xl shadow-primary/5 ring-1 ring-primary/20' 
-                    : 'bg-surface/5 border-outline-variant/10 hover:border-outline-variant/30 hover:bg-surface/10'
+                    ? 'bg-[#0E1116] border-cyanAccent/50 shadow-[0_12px_36px_-8px_rgba(0,240,255,0.15)] ring-1 ring-cyanAccent/30' 
+                    : 'bg-[#0A0C0E]/80 border-white/[0.07] hover:border-white/20 hover:bg-[#0D0F12]'
                 }`}
               >
-                <div className={`w-12 h-12 flex items-center justify-center rounded-xl mb-4 ${sol.iconBg} group-hover:scale-105 transition-transform duration-300`}>
-                  {sol.icon}
+                {/* Active Solution Background Glow */}
+                {isSelected && (
+                  <motion.div
+                    layoutId="activeSolutionGlow"
+                    className="absolute inset-0 bg-gradient-to-br from-cyanAccent/[0.06] via-transparent to-transparent pointer-events-none"
+                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  />
+                )}
+
+                <div className="flex items-center justify-between mb-4 relative z-10">
+                  <div className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${
+                    isSelected ? sol.accentClass : 'bg-white/[0.03] border border-white/10 text-textSecondary group-hover:text-white'
+                  }`}>
+                    {sol.icon}
+                  </div>
+                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded uppercase tracking-wider font-semibold border ${
+                    isSelected ? 'bg-cyanAccent/10 text-cyanAccent border-cyanAccent/30' : 'bg-white/5 text-textMuted border-white/10'
+                  }`}>
+                    {sol.badge}
+                  </span>
                 </div>
-                <div className="text-[10px] font-bold text-primary tracking-widest uppercase mb-1">{sol.badge}</div>
-                <h3 className="text-lg font-bold text-white mb-2 group-hover:text-primary transition-colors">{sol.title}</h3>
-                <p className="text-xs text-on-surface-variant/65 leading-relaxed font-light">{sol.shortDesc}</p>
-              </button>
+
+                <h3 className="text-base font-bold text-white mb-1.5 group-hover:text-cyanAccent transition-colors relative z-10">
+                  {sol.title}
+                </h3>
+                <p className="text-xs text-textSecondary font-light leading-relaxed relative z-10">
+                  {sol.shortDesc}
+                </p>
+
+                {/* Bottom Active Indicator Line */}
+                {isSelected && (
+                  <motion.div
+                    layoutId="activeSolutionLine"
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-400 via-cyanAccent to-cyan-300"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  />
+                )}
+              </motion.button>
             );
           })}
         </section>
 
-        {/* Active Solution Details and Playground */}
-        {selectedSolution && (
-          <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-16">
-            
-            {/* Deep-dive Documentation Panel */}
-            <div className="lg:col-span-7 flex flex-col gap-6">
-              <div className="p-8 glass-panel rounded-3xl border border-white/5 bg-[#0e0e11]/40 flex flex-col gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+        {/* Active Solution Deep Dive & Interactive Playground */}
+        <AnimatePresence mode="wait">
+          {selectedSolution && (
+            <motion.section
+              key={selectedSolution.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start pb-16"
+            >
+              
+              {/* LEFT: Deep-dive Documentation Panel */}
+              <div className="lg:col-span-7 flex flex-col gap-6">
                 
-                {/* Title and Tagline */}
-                <div>
-                  <span className="text-xs font-semibold text-primary/80 tracking-widest uppercase font-mono-data">Solution Overview</span>
-                  <h2 className="text-2xl font-bold text-white mt-1 mb-2">{selectedSolution.title}</h2>
-                  <p className="text-sm text-primary italic font-light">{selectedSolution.tagline}</p>
-                </div>
-
-                {/* Problem & Solution breakdown */}
-                <div className="space-y-4 border-t border-white/5 pt-4 text-xs font-light leading-[1.6]">
+                {/* Main Overview Card */}
+                <div className="obsidian-card rounded-2xl p-6 sm:p-8 relative overflow-hidden flex flex-col gap-6">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-cyanAccent/[0.08] to-transparent rounded-full blur-3xl pointer-events-none" />
+                  
+                  {/* Header Title & Tagline */}
                   <div>
-                    <h4 className="font-bold text-white mb-1 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5 text-primary" /> The Problem</h4>
-                    <p className="text-on-surface-variant/70">{selectedSolution.details.problem}</p>
+                    <div className="flex items-center gap-2 text-xs font-mono text-cyanAccent uppercase tracking-widest">
+                      <Network size={12} />
+                      <span>Architecture Breakdown</span>
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white mt-1">{selectedSolution.title}</h2>
+                    <p className="text-xs sm:text-sm text-cyanAccent/80 font-mono mt-0.5">{selectedSolution.tagline}</p>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white mb-1 flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-green-500" /> FrameForge Core Solution</h4>
-                    <p className="text-on-surface-variant/70">{selectedSolution.details.solution}</p>
-                  </div>
-                </div>
 
-                {/* Tech stack items mapping */}
-                <div className="border-t border-white/5 pt-4">
-                  <h4 className="font-bold text-xs text-white mb-3 flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5 text-primary" /> Technical Architecture Specs</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedSolution.details.techStack.map((tech, i) => (
-                      <div key={i} className="flex flex-col p-3 rounded-lg bg-black/20 border border-white/5 font-mono-data text-[10px]">
-                        <span className="text-on-surface-variant/50 uppercase tracking-wide">{tech.name}</span>
-                        <span className="text-white mt-0.5 font-medium">{tech.value}</span>
+                  {/* Split Problem vs Solution Comparison */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-white/[0.08] pt-5">
+                    
+                    {/* The Challenge */}
+                    <div className="p-4 rounded-xl bg-rose-500/[0.03] border border-rose-500/20 flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-400 font-mono uppercase tracking-wider">
+                        <AlertCircle size={13} />
+                        <span>The Challenge</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                      <p className="text-xs text-textSecondary font-light leading-relaxed">
+                        {selectedSolution.details.problem}
+                      </p>
+                    </div>
 
-              {/* API endpoints and Codebase paths */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                
-                {/* Routes Card */}
-                <div className="p-6 glass-panel rounded-2xl border border-white/5 bg-[#0e0e11]/40 flex flex-col gap-4">
-                  <h4 className="font-bold text-xs text-white flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-primary" /> API Routing Endpoints</h4>
-                  <div className="space-y-3">
-                    {selectedSolution.details.endpoints.map((ep, i) => (
-                      <div key={i} className="flex flex-col gap-1 pb-2 border-b border-white/5 last:border-0 last:pb-0 font-mono-data text-[10px]">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                              ep.method === 'POST' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 
-                              ep.method === 'WS' ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-white/5 text-gray-400'
-                            }`}>{ep.method}</span>
-                            <span className="text-white font-medium">{ep.route}</span>
-                          </div>
-                          <p className="text-[9px] text-on-surface-variant/60 font-sans font-light mt-0.5">{ep.desc}</p>
+                    {/* The FrameForge Resolution */}
+                    <div className="p-4 rounded-xl bg-emerald-500/[0.03] border border-emerald-500/20 flex flex-col gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 font-mono uppercase tracking-wider">
+                        <CheckCircle2 size={13} />
+                        <span>FrameForge Architecture</span>
+                      </div>
+                      <p className="text-xs text-textSecondary font-light leading-relaxed">
+                        {selectedSolution.details.solution}
+                      </p>
+                    </div>
+
+                  </div>
+
+                  {/* Technical Architecture Specs Grid */}
+                  <div className="border-t border-white/[0.08] pt-5">
+                    <h4 className="text-xs font-bold text-white mb-3 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                      <Cpu size={13} className="text-cyanAccent" />
+                      <span>Technical Architecture Specifications</span>
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {selectedSolution.details.techStack.map((tech, i) => (
+                        <div key={i} className="flex flex-col p-3 rounded-lg bg-[#0A0C0F] border border-white/[0.06] font-mono text-xs">
+                          <span className="text-[10px] text-textMuted uppercase tracking-wider">{tech.name}</span>
+                          <span className="text-white mt-0.5 font-medium text-xs truncate">{tech.value}</span>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
+
                 </div>
 
-                {/* Directory mapping Card */}
-                <div className="p-6 glass-panel rounded-2xl border border-white/5 bg-[#0e0e11]/40 flex flex-col gap-4">
-                  <h4 className="font-bold text-xs text-white flex items-center gap-1.5"><FileCode className="w-3.5 h-3.5 text-primary" /> Codebase Structure</h4>
-                  <div className="space-y-3 font-mono-data text-[10px]">
-                    {selectedSolution.details.codebase.map((cb, i) => (
-                      <div key={i} className="flex flex-col pb-2 border-b border-white/5 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-1.5 text-white font-medium">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                          <span>{cb.path}</span>
-                        </div>
-                        <p className="text-[9px] text-on-surface-variant/60 font-sans font-light mt-0.5 pl-3">{cb.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Simulation Playground Panel */}
-            <div className="lg:col-span-5 flex flex-col gap-4 h-full lg:sticky lg:top-24">
-              <div className="p-6 bg-surface-container/30 border border-white/10 rounded-3xl flex flex-col gap-5 backdrop-blur-xl h-full shadow-lg relative overflow-hidden">
-                
-                <div>
-                  <h3 className="text-md font-bold text-white flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary animate-pulse" />
-                    Pipeline Live Simulator
-                  </h3>
-                  <p className="text-[11px] text-on-surface-variant/65 mt-1 font-light leading-relaxed">
-                    Trigger a real-time walkthrough representing container, queue, and model operations logged synchronously.
-                  </p>
-                </div>
-
-                {/* Visual Process Pipeline */}
-                <div className="flex flex-col gap-3 py-2 border-b border-white/5 pb-5">
-                  <h4 className="text-[10px] font-bold text-primary tracking-widest uppercase mb-1">
-                    Visual Pipeline Process
-                  </h4>
-                  <div className="flex flex-col gap-4">
-                    {PIPELINE_STEPS[activeSol].map((step, idx) => {
-                      const isCompleted = simState === 'completed' || activeNodeIndex > idx;
-                      const isActive = simState === 'running' && activeNodeIndex === idx;
-                      const isPending = !isCompleted && !isActive;
-
-                      return (
-                        <div key={idx} className="flex items-start gap-3 relative">
-                          {/* Visual Connector Line */}
-                          {idx < PIPELINE_STEPS[activeSol].length - 1 && (
-                            <div className={`absolute left-5 top-9 bottom-[-20px] w-0.5 z-0 ${
-                              isCompleted ? 'bg-green-500' : 'bg-white/10 border-dashed border-l border-white/20'
-                            }`} />
-                          )}
-
-                          {/* Node Status Indicator Circle */}
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center border z-10 transition-all duration-300 relative ${
-                            isCompleted 
-                              ? 'bg-green-500/10 border-green-500 text-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
-                              : isActive
-                              ? 'bg-primary/20 border-primary text-primary shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse'
-                              : 'bg-black/40 border-white/10 text-on-surface-variant/40'
-                          }`}>
-                            {isCompleted ? <Check className="w-4 h-4 stroke-[3]" /> : step.icon}
-                            
-                            {/* Spinning indicator ring for active node */}
-                            {isActive && (
-                              <div className="absolute inset-[-2px] border border-primary border-t-transparent rounded-full animate-spin" />
-                            )}
-                          </div>
-
-                          {/* Node Info Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className={`text-xs font-bold transition-colors ${
-                                isCompleted ? 'text-white' : isActive ? 'text-primary' : 'text-on-surface-variant/40'
+                {/* API Routing Endpoints & Codebase Structures */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  
+                  {/* Routes Card */}
+                  <div className="obsidian-card rounded-2xl p-5 sm:p-6 flex flex-col gap-4">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                      <Globe size={13} className="text-cyanAccent" />
+                      <span>API Routing Endpoints</span>
+                    </h4>
+                    
+                    <div className="space-y-2.5 font-mono text-xs">
+                      {selectedSolution.details.endpoints.map((ep, i) => (
+                        <div key={i} className="flex flex-col gap-1 pb-2.5 border-b border-white/[0.06] last:border-0 last:pb-0 group">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider font-mono ${
+                                ep.method === 'POST' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                                ep.method === 'WS' ? 'bg-cyanAccent/10 text-cyanAccent border border-cyanAccent/20' : 
+                                'bg-purple-500/10 text-purple-400 border border-purple-500/20'
                               }`}>
-                                {step.name}
+                                {ep.method}
                               </span>
-                              <span className={`text-[8px] font-mono-data px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold ${
-                                isCompleted ? 'bg-green-500/10 text-green-500 border border-green-500/20' :
-                                isActive ? 'bg-primary/10 text-primary border border-primary/20' :
-                                'bg-white/5 text-on-surface-variant/20'
-                              }`}>
-                                {isCompleted ? 'SUCCESS' : isActive ? 'PROCESSING' : 'PENDING'}
-                              </span>
+                              <span className="text-white font-medium text-xs truncate">{ep.route}</span>
                             </div>
-                            <p className={`text-[10px] font-light mt-0.5 transition-colors leading-relaxed truncate ${
-                              isCompleted ? 'text-on-surface-variant/70' : isActive ? 'text-on-surface-variant/80' : 'text-on-surface-variant/20'
-                            }`}>
-                              {step.desc}
-                            </p>
+
+                            <button
+                              onClick={() => handleCopyText(ep.route, `ep-${i}`)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-textMuted hover:text-cyanAccent cursor-pointer"
+                              title="Copy route path"
+                            >
+                              {copiedItem === `ep-${i}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                            </button>
                           </div>
+                          <p className="text-[10px] text-textSecondary font-sans font-light pl-1">{ep.desc}</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Terminal Console View */}
-                <div ref={terminalContainerRef} className="flex-1 min-h-[300px] max-h-[380px] bg-black/80 rounded-2xl border border-white/10 p-4 font-mono-data text-[11px] text-on-surface-variant flex flex-col overflow-y-auto relative scrollbar-thin">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/5 opacity-40 mb-3 select-none">
-                    <span className="flex items-center gap-1.5"><Terminal className="w-3.5 h-3.5" /> frameforge_sim_v1</span>
-                    <span className="flex gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
-                    </span>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="flex-1 space-y-2 select-text">
-                    {simLogs.length === 0 && (
-                      <div className="text-center text-[10px] text-on-surface-variant/45 py-24 italic select-none">
-                        Terminal idle. Click "Trigger Simulation Run" below.
-                      </div>
-                    )}
-                    {simLogs.map((log, index) => {
-                      let colorClass = 'text-on-surface-variant/75';
-                      if (log.includes('[system]')) colorClass = 'text-primary font-semibold';
-                      if (log.includes('[validation]') || log.includes('[rbac]')) colorClass = 'text-yellow-500/80';
-                      if (log.includes('[model]')) colorClass = 'text-purple-400';
-                      if (log.includes('[OK]') || log.includes('[Valid]') || log.includes('[Ready]') || log.includes('[Completed]') || log.includes('[Sent]')) {
-                        colorClass = 'text-green-400';
-                      }
-                      return (
-                        <div key={index} className={`leading-relaxed whitespace-pre-wrap ${colorClass}`}>
-                          {log}
+                  {/* Codebase Tree Structure Card */}
+                  <div className="obsidian-card rounded-2xl p-5 sm:p-6 flex flex-col gap-4">
+                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                      <FolderTree size={13} className="text-cyanAccent" />
+                      <span>Codebase Architecture</span>
+                    </h4>
+                    
+                    <div className="space-y-2.5 font-mono text-xs">
+                      {selectedSolution.details.codebase.map((cb, i) => (
+                        <div key={i} className="flex flex-col pb-2.5 border-b border-white/[0.06] last:border-0 last:pb-0 group">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-white font-medium min-w-0">
+                              <div className="w-1.5 h-1.5 rounded-full bg-cyanAccent" />
+                              <span className="truncate text-xs">{cb.path}</span>
+                            </div>
+                            <button
+                              onClick={() => handleCopyText(cb.path, `cb-${i}`)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-textMuted hover:text-cyanAccent cursor-pointer"
+                              title="Copy directory path"
+                            >
+                              {copiedItem === `cb-${i}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-textSecondary font-sans font-light pl-3 mt-0.5">{cb.desc}</p>
                         </div>
-                      );
-                    })}
-                    <div ref={logTerminalEndRef} />
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Simulator Control Trigger */}
-                <button
-                  onClick={startSimulation}
-                  disabled={simState === 'running'}
-                  className={`w-full py-3.5 rounded-full font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                    simState === 'running'
-                      ? 'bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed'
-                      : 'bg-primary text-background hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-98'
-                  }`}
-                >
-                  {simState === 'running' ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Running Simulation Pipeline...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4 fill-current" />
-                      <span>Trigger Simulation Run</span>
-                    </>
-                  )}
-                </button>
+                </div>
 
               </div>
-            </div>
 
-          </section>
-        )}
+              {/* RIGHT: Live Interactive Pipeline Simulator */}
+              <div className="lg:col-span-5 flex flex-col gap-4 h-full lg:sticky lg:top-20">
+                <div className="obsidian-card rounded-2xl p-5 sm:p-6 flex flex-col gap-5 relative overflow-hidden shadow-2xl">
+                  
+                  {/* Simulator Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-cyanAccent animate-pulse" />
+                        <span>Pipeline Live Simulator</span>
+                      </h3>
+                      <p className="text-[11px] text-textSecondary mt-0.5 font-light">
+                        Simulate real-time microVM scheduling, queue events, and streaming logs.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-[9px]">
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        simState === 'running' ? 'bg-cyanAccent animate-ping' :
+                        simState === 'completed' ? 'bg-emerald-400' : 'bg-textMuted'
+                      }`} />
+                      <span className="uppercase text-textSecondary">{simState}</span>
+                    </div>
+                  </div>
+
+                  {/* Visual Node Pipeline */}
+                  <div className="flex flex-col gap-3 py-1">
+                    <div className="text-[10px] font-mono font-semibold text-cyanAccent uppercase tracking-wider">
+                      Process Pipeline Nodes
+                    </div>
+                    
+                    <div className="flex flex-col gap-3.5 relative">
+                      {PIPELINE_STEPS[activeSol].map((step, idx) => {
+                        const isCompleted = simState === 'completed' || activeNodeIndex > idx;
+                        const isActive = simState === 'running' && activeNodeIndex === idx;
+
+                        return (
+                          <div key={idx} className="flex items-start gap-3 relative group">
+                            
+                            {/* Vertical Glowing Connector Line */}
+                            {idx < PIPELINE_STEPS[activeSol].length - 1 && (
+                              <div className={`absolute left-4 top-8 bottom-[-18px] w-[2px] z-0 transition-colors duration-300 ${
+                                isCompleted ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' :
+                                isActive ? 'bg-gradient-to-b from-cyanAccent to-white/10 shadow-[0_0_8px_rgba(0,240,255,0.4)]' :
+                                'bg-white/10'
+                              }`} />
+                            )}
+
+                            {/* Node Status Indicator Circle */}
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border z-10 transition-all duration-300 relative ${
+                              isCompleted 
+                                ? 'bg-emerald-400/10 border-emerald-400 text-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)]'
+                                : isActive
+                                ? 'bg-cyanAccent/20 border-cyanAccent text-cyanAccent shadow-[0_0_16px_rgba(0,240,255,0.4)] animate-pulse'
+                                : 'bg-[#08090C] border-white/10 text-textMuted'
+                            }`}>
+                              {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : step.icon}
+                              
+                              {/* Spinning indicator ring for active node */}
+                              {isActive && (
+                                <div className="absolute inset-[-2px] border border-cyanAccent border-t-transparent rounded-full animate-spin" />
+                              )}
+                            </div>
+
+                            {/* Node Info Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs font-bold transition-colors ${
+                                  isCompleted ? 'text-white' : isActive ? 'text-cyanAccent' : 'text-textMuted'
+                                }`}>
+                                  {step.name}
+                                </span>
+                                <span className={`text-[8px] font-mono px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border ${
+                                  isCompleted ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' :
+                                  isActive ? 'bg-cyanAccent/10 text-cyanAccent border-cyanAccent/20' :
+                                  'bg-white/5 text-textMuted border-white/5'
+                                }`}>
+                                  {isCompleted ? 'SUCCESS' : isActive ? 'RUNNING' : 'PENDING'}
+                                </span>
+                              </div>
+                              <p className={`text-[10px] font-light mt-0.5 transition-colors leading-relaxed truncate ${
+                                isCompleted ? 'text-textSecondary' : isActive ? 'text-white' : 'text-textMuted'
+                              }`}>
+                                {step.desc}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* CRT/Monaco Live Terminal Console */}
+                  <div className="rounded-xl bg-[#08090C] border border-white/[0.08] overflow-hidden font-mono text-xs flex flex-col shadow-inner">
+                    
+                    {/* Terminal Header */}
+                    <div className="flex items-center justify-between px-3 py-1.5 bg-[#0D0F12] border-b border-white/[0.06] text-[10px] text-textMuted select-none">
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 rounded-full bg-rose-500/70"></div>
+                          <div className="w-2 h-2 rounded-full bg-amber-500/70"></div>
+                          <div className="w-2 h-2 rounded-full bg-emerald-500/70"></div>
+                        </div>
+                        <span className="ml-1 text-textSecondary font-mono">frameforge_kernel_sim</span>
+                      </div>
+
+                      {simLogs.length > 0 && (
+                        <button
+                          onClick={handleCopyTerminalLogs}
+                          className="flex items-center gap-1 text-[10px] text-textMuted hover:text-cyanAccent transition-colors cursor-pointer"
+                        >
+                          {copiedItem === 'terminal-logs' ? (
+                            <Check size={10} className="text-emerald-400" />
+                          ) : (
+                            <Copy size={10} />
+                          )}
+                          <span>{copiedItem === 'terminal-logs' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Terminal Stream Body */}
+                    <div 
+                      ref={terminalContainerRef} 
+                      className="p-3.5 h-[220px] overflow-y-auto space-y-1.5 text-[11px] leading-relaxed scrollbar-thin select-text bg-[#07080A]"
+                    >
+                      {simLogs.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-[11px] text-textMuted/60 italic select-none space-y-1">
+                          <Terminal size={20} className="text-textMuted/40 mb-1" />
+                          <span>Simulation pipeline idle.</span>
+                          <span className="text-[10px]">Click &quot;Trigger Simulation Run&quot; to test.</span>
+                        </div>
+                      )}
+
+                      {simLogs.map((log, index) => {
+                        let colorClass = 'text-textSecondary';
+                        if (log.includes('[system]')) colorClass = 'text-cyanAccent font-medium';
+                        if (log.includes('[validation]') || log.includes('[rbac]')) colorClass = 'text-amber-400';
+                        if (log.includes('[model]')) colorClass = 'text-purple-400';
+                        if (log.includes('[OK]') || log.includes('[Valid]') || log.includes('[Ready]') || log.includes('[Completed]') || log.includes('[Synced') || log.includes('SUCCESS')) {
+                          colorClass = 'text-emerald-400 font-medium';
+                        }
+                        return (
+                          <div key={index} className={`whitespace-pre-wrap ${colorClass}`}>
+                            {log}
+                          </div>
+                        );
+                      })}
+                      <div ref={logTerminalEndRef} />
+                    </div>
+                  </div>
+
+                  {/* Simulator Controls */}
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: simState === 'running' ? 1 : 1.02 }}
+                      whileTap={{ scale: simState === 'running' ? 1 : 0.98 }}
+                      onClick={startSimulation}
+                      disabled={simState === 'running'}
+                      className={`flex-1 py-2.5 rounded-xl font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md ${
+                        simState === 'running'
+                          ? 'bg-white/5 border border-white/10 text-textMuted cursor-not-allowed'
+                          : 'bg-cyanAccent text-[#08090A] hover:bg-cyanAccent/90 hover:shadow-[0_0_24px_rgba(0,240,255,0.3)] font-semibold'
+                      }`}
+                    >
+                      {simState === 'running' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Simulating Pipeline...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>{simState === 'completed' ? 'Re-run Simulation' : 'Trigger Simulation Run'}</span>
+                        </>
+                      )}
+                    </motion.button>
+
+                    {simLogs.length > 0 && (
+                      <button
+                        onClick={() => {
+                          clearSimulationTimeouts();
+                          setSimState('idle');
+                          setSimLogs([]);
+                          setActiveNodeIndex(-1);
+                        }}
+                        className="px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-textSecondary hover:text-white text-xs font-mono cursor-pointer transition-colors"
+                        title="Reset simulator"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+
+            </motion.section>
+          )}
+        </AnimatePresence>
+
       </main>
 
-      {/* Footer */}
-      <footer className="relative bg-[#050505] border-t border-outline-variant/10 w-full py-8 z-20">
-        <div className="px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="font-mono-data text-[10px] text-on-surface-variant/40">
-            SYSTEM COMPONENT MAPPING SUCCESSFUL. READY FOR DEPLOYMENT.
-          </p>
+      {/* Floating Back to Top & Reading Progress Pill */}
+      <AnimatePresence>
+        {readingProgress > 15 && (
+          <motion.button
+            initial={{ opacity: 0, y: 16, scale: 0.85 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.85 }}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => lenisRef.current?.scrollTo(0, { duration: 0.75 })}
+            className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-30 flex items-center gap-2 px-3 py-2 rounded-full bg-[#0E1116]/90 border border-white/10 hover:border-cyanAccent/40 backdrop-blur-xl shadow-2xl text-xs font-mono text-textSecondary hover:text-white transition-colors cursor-pointer group"
+          >
+            <div className="relative w-4 h-4 flex items-center justify-center">
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="14"
+                  fill="none"
+                  stroke="#00F0FF"
+                  strokeWidth="3"
+                  strokeDasharray="88"
+                  strokeDashoffset={88 - (88 * readingProgress) / 100}
+                  strokeLinecap="round"
+                  className="transition-all duration-150"
+                />
+              </svg>
+              <ArrowUp size={8} className="absolute text-cyanAccent group-hover:-translate-y-0.5 transition-transform" />
+            </div>
+            <span className="text-[10px] text-cyanAccent font-semibold">{Math.round(readingProgress)}%</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* FOOTER */}
+      <footer className="relative bg-[#07080A] border-t border-white/[0.06] w-full py-8 z-20">
+        <div className="px-6 md:px-12 max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-            <span className="font-mono-data text-[10px] text-on-surface-variant/50">ALL QUEUES & INGRESS HEALTHY</span>
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono text-xs text-textSecondary">
+              SYSTEM COMPONENT MAPPING ONLINE — ALL SERVICES HEALTHY
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-4 text-xs font-mono text-textMuted">
+            <span>K8s Cluster v1.30</span>
+            <span>•</span>
+            <span>RabbitMQ v3.13</span>
+            <span>•</span>
+            <span>LangChain v0.3</span>
           </div>
         </div>
       </footer>
