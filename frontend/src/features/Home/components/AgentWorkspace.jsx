@@ -27,7 +27,11 @@ import {
   CornerDownLeft,
   X,
   StopCircle,
-  Ban
+  Ban,
+  Wand2,
+  Compass,
+  Activity,
+  Flame,
 } from 'lucide-react';
 
 const MODELS = [
@@ -36,48 +40,74 @@ const MODELS = [
     name: 'Medium',
     tag: 'Groq',
     badge: 'Balanced',
+    speed: '~180 tps',
     description: 'High throughput, balanced coding & rapid responsive iterations',
     color: 'text-cyanAccent',
     badgeColor: 'bg-cyanAccent/15 text-cyanAccent border-cyanAccent/30',
-    selectedBg: 'bg-cyanAccent/15 border-cyanAccent/30',
-    iconBg: 'bg-cyanAccent text-black',
+    selectedBg: 'bg-cyanAccent/10 border-cyanAccent/30 shadow-[0_0_15px_rgba(0,240,255,0.1)]',
+    iconBg: 'bg-cyanAccent/20 text-cyanAccent border border-cyanAccent/35',
     activeText: 'text-cyanAccent',
-    icon: Bot
+    icon: Bot,
   },
   {
     id: '2',
     name: 'Pro',
     tag: 'DeepSeek',
     badge: 'Reasoning',
+    speed: '~45 tps',
     description: 'Deep multi-file planning, architecture & structural AST synthesis',
     color: 'text-purple-400',
     badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-    selectedBg: 'bg-purple-500/15 border-purple-500/30',
-    iconBg: 'bg-purple-400 text-black',
+    selectedBg: 'bg-purple-500/10 border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.1)]',
+    iconBg: 'bg-purple-500/20 text-purple-300 border border-purple-500/35',
     activeText: 'text-purple-400',
-    icon: Cpu
+    icon: Cpu,
   },
   {
     id: '3',
     name: 'Fast',
     tag: 'Mistral',
     badge: 'Turbo',
+    speed: '~120 tps',
     description: 'Instant inline updates, micro-fixes & fast styling tweaks',
     color: 'text-amber-400',
     badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    selectedBg: 'bg-amber-500/15 border-amber-500/30',
-    iconBg: 'bg-amber-400 text-black',
+    selectedBg: 'bg-amber-500/10 border-amber-500/30 shadow-[0_0_15px_rgba(251,191,36,0.1)]',
+    iconBg: 'bg-amber-500/20 text-amber-300 border border-amber-500/35',
     activeText: 'text-amber-400',
-    icon: Zap
-  }
+    icon: Zap,
+  },
 ];
 
-
 const QUICK_PROMPT_SUGGESTIONS = [
-  { label: 'Add Glassmorphic Hero Section', prompt: 'Create a stunning glassmorphic Hero section with vibrant cyan gradients and subtle floating cards.' },
-  { label: 'Add Dark Mode Toggle Switch', prompt: 'Implement a modern animated Dark Mode toggle switch with smooth spring transitions and localStorage persistence.' },
-  { label: 'Make Layout Responsive with Drawer', prompt: 'Refactor the navigation layout to support responsive viewports with a sleek sliding mobile drawer.' },
-  { label: 'Add Interactive Pricing Table', prompt: 'Generate a modern SaaS pricing table component with monthly/annual billing switch and feature checkmarks.' }
+  {
+    category: 'HERO UI',
+    icon: Sparkles,
+    label: 'Add Glassmorphic Hero Section',
+    prompt: 'Create a stunning glassmorphic Hero section with vibrant cyan gradients and subtle floating cards.',
+    accent: 'border-cyanAccent/30 text-cyanAccent bg-cyanAccent/10',
+  },
+  {
+    category: 'THEME',
+    icon: Zap,
+    label: 'Add Dark Mode Toggle Switch',
+    prompt: 'Implement a modern animated Dark Mode toggle switch with smooth spring transitions and localStorage persistence.',
+    accent: 'border-amber-400/30 text-amber-400 bg-amber-400/10',
+  },
+  {
+    category: 'LAYOUT',
+    icon: Layers,
+    label: 'Make Layout Responsive with Drawer',
+    prompt: 'Refactor the navigation layout to support responsive viewports with a sleek sliding mobile drawer.',
+    accent: 'border-sky-400/30 text-sky-400 bg-sky-400/10',
+  },
+  {
+    category: 'SAAS COMPONENT',
+    icon: FileCode,
+    label: 'Add Interactive Pricing Table',
+    prompt: 'Generate a modern SaaS pricing table component with monthly/annual billing switch and feature checkmarks.',
+    accent: 'border-emerald-400/30 text-emerald-400 bg-emerald-400/10',
+  },
 ];
 
 const parseFiles = (stepText) => {
@@ -171,42 +201,44 @@ function EventItem({ event, itemVariants, isLatest }) {
     return (
       <motion.div
         variants={itemVariants}
-        className="rounded-xl border border-red-500/30 bg-red-500/10 p-2.5 shadow-sm relative overflow-hidden flex items-start justify-between gap-2.5 text-red-400 backdrop-blur-md"
+        className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 shadow-[0_4px_16px_rgba(244,63,94,0.15)] relative overflow-hidden flex items-start justify-between gap-3 text-rose-400 backdrop-blur-md"
       >
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
-        <div className="flex items-start gap-2 min-w-0">
-          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]" />
+        <div className="flex items-start gap-2.5 min-w-0">
+          <div className="w-5 h-5 rounded-lg bg-rose-500/20 border border-rose-500/35 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">
+            <AlertCircle className="w-3 h-3" />
+          </div>
           <div className="flex flex-col min-w-0">
-            <span className="font-mono text-[11px] font-bold tracking-tight">Execution Error</span>
-            <span className="font-mono text-[10px] text-red-300/80 leading-relaxed truncate" title={event.step}>
+            <span className="font-mono text-[11px] font-bold tracking-wide uppercase">Execution Error</span>
+            <span className="font-mono text-[10px] text-rose-300/85 leading-relaxed truncate" title={event.step}>
               {event.step}
             </span>
           </div>
         </div>
-        <span className="font-mono text-[9px] text-red-400 bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 rounded leading-none shrink-0 uppercase tracking-wider font-semibold">
+        <span className="font-mono text-[9px] text-rose-400 bg-rose-500/20 border border-rose-500/30 px-2 py-0.5 rounded-md leading-none shrink-0 uppercase tracking-wider font-semibold">
           Failed
         </span>
       </motion.div>
     );
   }
 
-  // Stopped / Cancelled State (NOT a green checkmark)
+  // Stopped / Cancelled State
   if (isStopped) {
     return (
       <motion.div
         variants={itemVariants}
-        className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-2.5 shadow-sm relative overflow-hidden flex items-center justify-between gap-2.5 text-gray-300 backdrop-blur-md"
+        className="rounded-xl border border-amber-500/25 bg-amber-500/[0.05] p-3 shadow-[0_4px_16px_rgba(251,191,36,0.1)] relative overflow-hidden flex items-center justify-between gap-3 text-gray-300 backdrop-blur-md"
       >
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80" />
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-4 h-4 rounded-md bg-amber-400/10 border border-amber-400/25 flex items-center justify-center text-amber-400 shrink-0">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-5 h-5 rounded-lg bg-amber-400/15 border border-amber-400/30 flex items-center justify-center text-amber-400 shrink-0">
             <Square className="w-2.5 h-2.5 fill-amber-400/80" />
           </div>
           <span className="font-mono text-[11px] text-gray-300 truncate" title={displayTitle}>
             {displayTitle}
           </span>
         </div>
-        <span className="font-mono text-[9px] text-amber-400/80 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded leading-none shrink-0 uppercase font-semibold">
+        <span className="font-mono text-[9px] text-amber-400/90 bg-amber-400/15 border border-amber-400/25 px-2 py-0.5 rounded-md leading-none shrink-0 uppercase font-semibold">
           Stopped
         </span>
       </motion.div>
@@ -218,16 +250,16 @@ function EventItem({ event, itemVariants, isLatest }) {
     return (
       <motion.div variants={itemVariants} className="flex flex-col select-none group/item">
         <div
-          className="flex items-center justify-between py-2 px-2.5 rounded-xl border border-white/[0.05] bg-[#0e1118]/60 hover:bg-white/[0.04] hover:border-white/10 transition-all duration-200 cursor-pointer"
+          className="flex items-center justify-between py-2 px-3 rounded-xl border border-white/[0.06] bg-[#0A0D13]/80 hover:bg-white/[0.04] hover:border-white/12 transition-all duration-200 cursor-pointer shadow-sm"
           onClick={() => {
             if (files.length > 0) setDropdownOpen(!dropdownOpen);
           }}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-4 h-4 rounded-md bg-emerald-400/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.15)]">
-              <Check className="w-2.5 h-2.5 stroke-[2.5]" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-5 h-5 rounded-lg bg-emerald-400/10 border border-emerald-400/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_10px_rgba(52,211,153,0.2)]">
+              <Check className="w-3 h-3 stroke-[2.5]" />
             </div>
-            <span className="font-mono text-[11px] text-gray-300 group-hover/item:text-white transition-colors truncate" title={displayTitle}>
+            <span className="font-mono text-[11px] text-gray-300 group-hover/item:text-white transition-colors truncate font-medium" title={displayTitle}>
               {displayTitle}
             </span>
 
@@ -238,17 +270,17 @@ function EventItem({ event, itemVariants, isLatest }) {
                   e.stopPropagation();
                   setDropdownOpen(!dropdownOpen);
                 }}
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyanAccent/10 text-cyanAccent border border-cyanAccent/30 hover:bg-cyanAccent/20 transition-all text-[9px] font-mono font-semibold cursor-pointer shrink-0"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyanAccent/10 text-cyanAccent border border-cyanAccent/30 hover:bg-cyanAccent/20 transition-all text-[9.5px] font-mono font-semibold cursor-pointer shrink-0"
               >
                 <span>{files.length} {files.length === 1 ? 'file' : 'files'}</span>
-                <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-1 text-gray-500 font-mono text-[10px] shrink-0 pl-2">
-            <Clock size={10} className="text-gray-600" />
-            <span>{displayTime}s</span>
+          <div className="flex items-center gap-1.5 text-gray-500 font-mono text-[10px] shrink-0 pl-2">
+            <Clock size={11} className="text-gray-500" />
+            <span className="text-gray-400">{displayTime}s</span>
           </div>
         </div>
 
@@ -259,8 +291,8 @@ function EventItem({ event, itemVariants, isLatest }) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden pl-6 pr-2 pb-1.5 pt-1 flex flex-col gap-1 border-l border-white/10 ml-4.5 mt-1 font-mono text-[10px] text-gray-300"
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden pl-6 pr-2 pb-1.5 pt-1.5 flex flex-col gap-1.5 border-l border-white/10 ml-5 mt-1 font-mono text-[10px] text-gray-300"
             >
               {files.map((file, idx) => {
                 const badge = getFileBadge(file);
@@ -269,10 +301,10 @@ function EventItem({ event, itemVariants, isLatest }) {
                 return (
                   <div
                     key={idx}
-                    className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 transition-all group/file"
+                    className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-[#080B10] hover:bg-white/[0.05] border border-white/[0.06] hover:border-cyanAccent/25 transition-all group/file shadow-inner"
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`text-[8px] font-mono px-1 py-0.2 rounded border ${badge.color}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`text-[8.5px] font-mono px-1.5 py-0.2 rounded border font-semibold ${badge.color}`}>
                         {badge.label}
                       </span>
                       <span className="truncate text-gray-300 group-hover/file:text-white" title={file}>
@@ -284,9 +316,13 @@ function EventItem({ event, itemVariants, isLatest }) {
                       type="button"
                       onClick={(e) => handleCopyPath(e, file)}
                       title="Copy file path"
-                      className="p-1 rounded text-gray-500 hover:text-cyanAccent hover:bg-cyanAccent/10 opacity-0 group-hover/file:opacity-100 transition-all cursor-pointer shrink-0"
+                      className="p-1 rounded-md text-gray-500 hover:text-cyanAccent hover:bg-cyanAccent/10 opacity-0 group-hover/file:opacity-100 transition-all cursor-pointer shrink-0"
                     >
-                      {isCopied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                      {isCopied ? (
+                        <Check size={11} className="text-emerald-400" />
+                      ) : (
+                        <Copy size={11} />
+                      )}
                     </button>
                   </div>
                 );
@@ -302,17 +338,17 @@ function EventItem({ event, itemVariants, isLatest }) {
   return (
     <motion.div variants={itemVariants} className="flex flex-col">
       <div
-        className="rounded-xl border border-cyanAccent/30 bg-[#0d1017]/90 p-2.5 flex items-center justify-between shadow-[0_0_15px_rgba(0,240,255,0.08)] relative overflow-hidden cursor-pointer"
+        className="rounded-xl border border-cyanAccent/40 bg-[#0B0F17]/95 p-3 flex items-center justify-between shadow-[0_0_20px_rgba(0,240,255,0.12)] relative overflow-hidden cursor-pointer"
         onClick={() => {
           if (files.length > 0) setDropdownOpen(!dropdownOpen);
         }}
       >
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyanAccent shadow-[0_0_8px_rgba(0,240,255,0.6)] animate-pulse" />
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-4 h-4 rounded-md bg-cyanAccent/10 border border-cyanAccent/30 flex items-center justify-center text-cyanAccent shrink-0">
-            <Loader2 className="w-2.5 h-2.5 animate-spin stroke-[2.5]" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyanAccent shadow-[0_0_12px_rgba(0,240,255,0.8)] animate-pulse" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-5 h-5 rounded-lg bg-cyanAccent/15 border border-cyanAccent/35 flex items-center justify-center text-cyanAccent shrink-0">
+            <Loader2 className="w-3 h-3 animate-spin stroke-[2.5]" />
           </div>
-          <span className="font-mono text-[11px] font-semibold text-cyanAccent tracking-tight truncate" title={displayTitle}>
+          <span className="font-mono text-[11px] font-bold text-cyanAccent tracking-tight truncate" title={displayTitle}>
             {displayTitle}
           </span>
 
@@ -323,10 +359,10 @@ function EventItem({ event, itemVariants, isLatest }) {
                 e.stopPropagation();
                 setDropdownOpen(!dropdownOpen);
               }}
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyanAccent/10 text-cyanAccent border border-cyanAccent/30 hover:bg-cyanAccent/20 transition-all text-[9px] font-mono font-semibold cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyanAccent/15 text-cyanAccent border border-cyanAccent/35 hover:bg-cyanAccent/25 transition-all text-[9.5px] font-mono font-semibold cursor-pointer shrink-0"
             >
               <span>{files.length} {files.length === 1 ? 'file' : 'files'}</span>
-              <ChevronDown className={`w-2.5 h-2.5 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
           )}
         </div>
@@ -343,15 +379,15 @@ function EventItem({ event, itemVariants, isLatest }) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden pl-6 pr-2 pb-1.5 pt-1 flex flex-col gap-1 border-l border-cyanAccent/30 ml-4.5 mt-1 font-mono text-[10px] text-gray-300"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden pl-6 pr-2 pb-1.5 pt-1.5 flex flex-col gap-1.5 border-l border-cyanAccent/35 ml-5 mt-1 font-mono text-[10px] text-gray-300"
           >
             {files.map((file, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-1.5 py-1 px-2 rounded-lg bg-cyanAccent/5 border border-cyanAccent/15"
+                className="flex items-center gap-2 py-1.5 px-2.5 rounded-lg bg-cyanAccent/10 border border-cyanAccent/20"
               >
-                <FileCode size={11} className="text-cyanAccent shrink-0" />
+                <FileCode size={12} className="text-cyanAccent shrink-0" />
                 <span className="truncate text-gray-200">{file}</span>
                 <div className="w-1.5 h-1.5 rounded-full bg-cyanAccent animate-ping ml-auto shrink-0" />
               </div>
@@ -368,7 +404,7 @@ export default function AgentWorkspace({
   isGenerating = false,
   sendAiMessage,
   stopAiResponse,
-  onMenuClick
+  onMenuClick,
 }) {
   const scrollRef = useRef(null);
   const contentRef = useRef(null);
@@ -385,7 +421,7 @@ export default function AgentWorkspace({
   const [isOpen, setIsOpen] = useState(false);
   const [avatarImgFailed, setAvatarImgFailed] = useState(false);
 
-  // Smooth Lenis integration
+  // Smooth Lenis momentum scrolling
   useEffect(() => {
     const lenis = new Lenis({
       wrapper: scrollRef.current,
@@ -450,13 +486,13 @@ export default function AgentWorkspace({
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-    }
+      transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 12 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 26 } },
   };
 
   const activeModelObj = useMemo(
@@ -466,25 +502,30 @@ export default function AgentWorkspace({
 
   return (
     <motion.section
-      initial={{ x: 30, opacity: 0 }}
+      initial={{ x: 24, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="w-full flex flex-col h-full bg-[#090b10] border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl relative z-10 font-sans"
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="w-full flex flex-col h-full bg-[#080A0F] border border-white/[0.08] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.7)] relative z-10 font-sans"
     >
-      {/* Top Accent Line */}
-      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyanAccent/40 to-transparent" />
+      {/* Top Ambient Specular Neon Hairline */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyanAccent/50 to-transparent z-30" />
 
-      {/* Header Deck */}
-      <header className="px-3.5 py-2.5 border-b border-white/[0.07] flex items-center justify-between bg-[#0b0d13]/90 backdrop-blur-xl shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-cyanAccent/10 border border-cyanAccent/30 flex items-center justify-center text-cyanAccent shadow-[0_0_10px_rgba(0,240,255,0.15)]">
-            <Sparkles className="w-3 h-3 animate-pulse" />
+      {/* Luxury Obsidian Chrome Header */}
+      <header className="px-4 py-2.5 border-b border-white/[0.07] flex items-center justify-between bg-[#0B0D13]/95 backdrop-blur-xl shrink-0 relative z-20">
+        <div className="flex items-center gap-2.5">
+          {/* Holographic Glowing AI Engine Core Icon */}
+          <div className="relative group/badge flex items-center justify-center">
+            <div className="absolute inset-0 rounded-xl bg-cyanAccent/25 blur-md opacity-70 group-hover/badge:opacity-100 transition-opacity" />
+            <div className="relative w-7 h-7 rounded-xl bg-gradient-to-br from-cyanAccent/20 via-[#0C121F] to-[#080B12] border border-cyanAccent/40 flex items-center justify-center text-cyanAccent shadow-[0_0_12px_rgba(0,240,255,0.25)]">
+              <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+            </div>
           </div>
+
           <div>
             <div className="flex items-center gap-1.5">
               <h2 className="text-xs font-bold text-white font-mono tracking-wide">Forge AI Engine</h2>
-              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyanAccent/10 border border-cyanAccent/25 text-cyanAccent font-semibold">
-                v3.0
+              <span className="text-[8.5px] font-mono px-1.5 py-0.2 rounded bg-cyanAccent/15 border border-cyanAccent/30 text-cyanAccent font-bold tracking-tight">
+                v3.2 PRO
               </span>
             </div>
             <p className="text-[9px] font-mono text-gray-400">Autonomous Code Synthesizer</p>
@@ -494,27 +535,35 @@ export default function AgentWorkspace({
         <div className="flex items-center gap-2">
           {/* Status Badge */}
           {isGenerating ? (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyanAccent/10 border border-cyanAccent/30 select-none shadow-[0_0_8px_rgba(0,240,255,0.15)]">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyanAccent animate-ping" />
+            <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-cyanAccent/10 border border-cyanAccent/30 select-none shadow-[0_0_14px_rgba(0,240,255,0.2)]">
+              {/* Animated Neural Audio/Wave Equalizer */}
+              <div className="flex items-center gap-0.5 h-2.5">
+                <span className="w-0.5 h-full bg-cyanAccent rounded-full animate-[neuralWave_0.8s_ease-in-out_infinite]" />
+                <span className="w-0.5 h-full bg-cyanAccent rounded-full animate-[neuralWave_0.8s_ease-in-out_0.2s_infinite]" />
+                <span className="w-0.5 h-full bg-cyanAccent rounded-full animate-[neuralWave_0.8s_ease-in-out_0.4s_infinite]" />
+              </div>
               <span className="font-mono text-[9px] text-cyanAccent font-bold tracking-wider uppercase">
-                ACTIVE
+                SYNTHESIZING
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] select-none text-gray-400 font-mono text-[9px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>STANDBY</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] select-none text-gray-400 font-mono text-[9px] shadow-sm">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              </span>
+              <span className="font-medium text-gray-300">STANDBY</span>
             </div>
           )}
 
-          {/* Menu Button */}
+          {/* Action Menu Trigger Button */}
           {onMenuClick && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               type="button"
               onClick={onMenuClick}
-              className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-cyanAccent/40 hover:bg-cyanAccent/10 text-gray-400 hover:text-white transition-all cursor-pointer"
+              className="p-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-cyanAccent/40 hover:bg-cyanAccent/10 text-gray-400 hover:text-white transition-all cursor-pointer shadow-sm"
               title="Open Navigation Menu"
             >
               <Menu className="w-3.5 h-3.5" />
@@ -524,7 +573,7 @@ export default function AgentWorkspace({
       </header>
 
       {/* Main Conversation & Execution Stream */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-3.5 relative">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 relative">
         <div ref={contentRef} className="flex flex-col gap-4">
           {/* User Prompt Bubble with Unified Clean Alignment */}
           {currentPrompt && (
@@ -535,6 +584,9 @@ export default function AgentWorkspace({
             >
               <div className="flex items-center gap-1.5 pr-1">
                 <span className="text-[10px] font-mono text-gray-400 font-medium">{user || 'Developer'}</span>
+                <span className={`text-[8px] font-mono px-1.5 py-0.2 rounded border font-semibold ${activeModelObj.badgeColor}`}>
+                  {activeModelObj.name}
+                </span>
                 <div className="w-5 h-5 rounded-full ring-1 ring-cyanAccent/30 overflow-hidden bg-[#15181f] flex items-center justify-center shrink-0">
                   {avatar && !avatarImgFailed ? (
                     <img
@@ -552,8 +604,9 @@ export default function AgentWorkspace({
                 </div>
               </div>
 
-              <div className="bg-[#12151e] text-gray-100 px-3.5 py-2.5 rounded-2xl rounded-tr-md border border-white/[0.09] shadow-[0_4px_16px_rgba(0,0,0,0.4)] max-w-[95%]">
-                <p className="text-xs text-gray-200 font-sans leading-relaxed whitespace-pre-wrap break-words">
+              <div className="bg-[#0E121B] text-gray-100 px-3.5 py-2.5 rounded-2xl rounded-tr-sm border border-white/[0.09] shadow-[0_8px_24px_rgba(0,0,0,0.5)] max-w-[95%] relative overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-cyanAccent/40 to-transparent pointer-events-none" />
+                <p className="text-xs text-gray-200 font-sans leading-relaxed whitespace-pre-wrap break-words selection:bg-cyanAccent/20 selection:text-white">
                   {currentPrompt}
                 </p>
               </div>
@@ -567,19 +620,19 @@ export default function AgentWorkspace({
               initial="hidden"
               animate="show"
               key="ai-event-list"
-              className="flex flex-col gap-2 w-full mt-1"
+              className="flex flex-col gap-2.5 w-full mt-1"
             >
               <motion.div variants={itemVariants} className="flex items-center justify-between px-1 mb-0.5 select-none">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyanAccent opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyanAccent" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyanAccent shadow-[0_0_8px_#00F0FF]" />
                   </span>
-                  <span className="font-mono text-[10px] text-gray-400 tracking-wider uppercase font-semibold">
+                  <span className="font-mono text-[10px] text-gray-300 tracking-wider uppercase font-bold">
                     Orchestration Pipeline
                   </span>
                 </div>
-                <span className="font-mono text-[9px] text-gray-500 px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.06]">
+                <span className="font-mono text-[9px] text-gray-400 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08]">
                   {aiEvents.length} {aiEvents.length === 1 ? 'task' : 'tasks'}
                 </span>
               </motion.div>
@@ -594,54 +647,89 @@ export default function AgentWorkspace({
               ))}
             </motion.div>
           ) : !currentPrompt ? (
-            /* Futuristic Empty State & Prompt Suggestions */
-            <div className="py-8 px-2 flex flex-col items-center justify-center text-center gap-5">
-              {/* Central Glowing Cyber Orb */}
-              <div className="relative flex items-center justify-center w-16 h-16">
+            /* Futuristic Holographic Empty State & Starter Directives */
+            <div className="py-6 px-1 flex flex-col items-center justify-center text-center gap-5">
+              {/* Central Holographic AI Core / Reactor */}
+              <div className="relative flex items-center justify-center w-24 h-24">
+                {/* Ambient breathing color glow aura */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-cyanAccent/20 via-indigo-500/15 to-transparent blur-2xl pointer-events-none" />
+
+                {/* Outer Dashed Orbital Ring */}
                 <motion.div
                   animate={{ rotate: 360 }}
-                  transition={{ repeat: Infinity, duration: 8, ease: 'linear' }}
-                  className="absolute inset-0 rounded-full border border-t-cyanAccent border-r-transparent border-b-cyanAccent/20 border-l-transparent shadow-[0_0_20px_rgba(0,240,255,0.15)]"
-                />
+                  transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
+                  className="absolute inset-0 rounded-full border border-dashed border-cyanAccent/30"
+                >
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-cyanAccent shadow-[0_0_8px_#00F0FF]" />
+                </motion.div>
+
+                {/* Inner Counter-Rotating Ring */}
                 <motion.div
                   animate={{ rotate: -360 }}
-                  transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
-                  className="absolute inset-2 rounded-full border border-b-indigo-400 border-t-transparent border-r-transparent border-l-indigo-400/20"
-                />
-                <div className="w-10 h-10 rounded-xl bg-cyanAccent/10 border border-cyanAccent/30 flex items-center justify-center text-cyanAccent shadow-[0_0_12px_rgba(0,240,255,0.2)]">
-                  <Bot className="w-5 h-5" />
-                </div>
+                  transition={{ repeat: Infinity, duration: 14, ease: 'linear' }}
+                  className="absolute inset-3 rounded-full border border-indigo-400/25"
+                >
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_6px_#818cf8]" />
+                </motion.div>
+
+                {/* Floating Central Core */}
+                <motion.div
+                  animate={{ y: [0, -3, 0] }}
+                  transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                  className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#121929] to-[#0A0D15] border border-cyanAccent/45 flex items-center justify-center text-cyanAccent shadow-[0_0_24px_rgba(0,240,255,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] relative overflow-hidden"
+                >
+                  <div className="absolute top-0 inset-x-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+                  <Bot className="w-6 h-6 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]" />
+                </motion.div>
               </div>
 
-              <div className="max-w-xs space-y-1">
-                <h3 className="text-xs font-bold text-white font-mono tracking-tight">
+              {/* Title & Narrative */}
+              <div className="max-w-xs space-y-1.5">
+                <h3 className="text-sm font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-cyan-400 font-mono">
                   Autonomous Architect Ready
                 </h3>
-                <p className="text-[11px] text-gray-400 font-light leading-relaxed">
+                <p className="text-[11.5px] text-gray-400 font-light leading-relaxed">
                   Type your prompt below to instruct Forge Engine to build, inspect, or refactor React components in real time.
                 </p>
               </div>
 
-              {/* Quick Suggestion Chips */}
-              <div className="w-full flex flex-col gap-1.5 pt-1">
-                <div className="flex items-center gap-1 text-[9px] font-mono text-gray-500 px-1 uppercase tracking-wider">
-                  <Sparkles size={10} className="text-cyanAccent" />
-                  <span>Starter Directives</span>
+              {/* Quick Starter Directives */}
+              <div className="w-full flex flex-col gap-2 pt-1">
+                <div className="flex items-center justify-between px-1 text-[9.5px] font-mono text-gray-500 uppercase tracking-widest w-full">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles size={11} className="text-cyanAccent" />
+                    <span className="text-gray-400 font-semibold">Starter Directives</span>
+                  </div>
+                  <span className="text-[8.5px] text-gray-500">1-click insert</span>
                 </div>
-                <div className="grid grid-cols-1 gap-1.5 text-left">
-                  {QUICK_PROMPT_SUGGESTIONS.map((item, idx) => (
-                    <motion.button
-                      whileHover={{ x: 2, scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSelectSuggestion(item.prompt)}
-                      className="p-2 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-cyanAccent/10 hover:border-cyanAccent/30 transition-all text-[11px] font-mono text-gray-300 hover:text-white flex items-center justify-between group cursor-pointer"
-                    >
-                      <span className="truncate pr-2">{item.label}</span>
-                      <CornerDownLeft size={11} className="text-gray-600 group-hover:text-cyanAccent shrink-0 transition-colors" />
-                    </motion.button>
-                  ))}
+
+                <div className="grid grid-cols-1 gap-2 text-left">
+                  {QUICK_PROMPT_SUGGESTIONS.map((item, idx) => {
+                    const IconComp = item.icon;
+                    return (
+                      <motion.button
+                        key={idx}
+                        whileHover={{ x: 2, scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(item.prompt)}
+                        className="group relative p-2.5 rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#0F131C]/60 to-[#0A0D14]/60 hover:from-[#131A28]/80 hover:to-[#0C1018]/80 hover:border-cyanAccent/40 transition-all duration-200 cursor-pointer flex items-center justify-between gap-2.5 select-none shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(0,240,255,0.08)]"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`text-[8.5px] font-mono px-1.5 py-0.5 rounded border uppercase font-bold tracking-wider shrink-0 ${item.accent}`}>
+                            {item.category}
+                          </span>
+                          <span className="text-[11px] font-mono text-gray-300 group-hover:text-white font-medium truncate transition-colors">
+                            {item.label}
+                          </span>
+                        </div>
+
+                        <div className="px-1.5 py-0.5 rounded bg-white/[0.04] group-hover:bg-cyanAccent/20 text-gray-500 group-hover:text-cyanAccent border border-white/[0.06] group-hover:border-cyanAccent/30 text-[9.5px] font-mono font-bold transition-all shrink-0 flex items-center gap-0.5">
+                          <span>↵</span>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -652,8 +740,8 @@ export default function AgentWorkspace({
         </div>
       </div>
 
-      {/* Bottom Input Console - Clean Two-Row Layout without Collisions */}
-      <div className="p-3 bg-[#0a0c12] border-t border-white/[0.07] shrink-0 relative">
+      {/* Bottom Studio Cockpit Input Console */}
+      <div className="p-3 bg-[#0A0C11] border-t border-white/[0.07] shrink-0 relative z-30">
         {/* Backdrop dismiss for Model Dropdown */}
         {isOpen && (
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
@@ -661,7 +749,7 @@ export default function AgentWorkspace({
 
         <form
           onSubmit={handleSend}
-          className="rounded-2xl border border-white/[0.08] bg-[#10131b] p-2.5 shadow-xl focus-within:border-cyanAccent/40 focus-within:shadow-[0_0_20px_rgba(0,240,255,0.12)] transition-all flex flex-col gap-2 relative"
+          className="rounded-2xl border border-white/[0.08] bg-[#0E1118] p-3 shadow-2xl focus-within:border-cyanAccent/45 focus-within:shadow-[0_0_25px_-2px_rgba(0,240,255,0.2)] transition-all duration-300 flex flex-col gap-2 relative overflow-visible"
         >
           {/* Row 1: Textarea Prompt Input */}
           <textarea
@@ -672,39 +760,39 @@ export default function AgentWorkspace({
             onKeyDown={handleKeyDown}
             disabled={isGenerating}
             placeholder={isGenerating ? 'Synthesizing code in workspace...' : 'Describe what to build or change...'}
-            className="w-full bg-transparent resize-none font-sans text-xs text-white placeholder-gray-500 focus:outline-none disabled:opacity-40 leading-relaxed min-h-[42px] max-h-32"
+            className="w-full bg-transparent resize-none font-sans text-xs text-white placeholder-gray-500 focus:outline-none disabled:opacity-40 leading-relaxed min-h-[44px] max-h-36 selection:bg-cyanAccent/20 selection:text-white"
           />
 
-          {/* Row 2: Bottom Toolbar with Model Chip on Left & Action on Right */}
-          <div className="flex items-center justify-between pt-1 border-t border-white/[0.05] relative z-50">
+          {/* Row 2: Bottom Toolbar with Model Switcher on Left & Action Trigger on Right */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] relative z-50">
             {/* Custom Model Selector Chip */}
             <div className="relative">
               <button
                 type="button"
                 disabled={isGenerating}
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-cyanAccent/30 text-gray-300 hover:text-white transition-all text-[10px] font-mono cursor-pointer disabled:opacity-50 select-none shadow-sm"
+                className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-cyanAccent/35 text-gray-300 hover:text-white transition-all text-[10px] font-mono cursor-pointer disabled:opacity-50 select-none shadow-sm"
               >
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeModelObj.id}
-                    initial={{ opacity: 0, y: -3 }}
+                    initial={{ opacity: 0, y: -2 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 3 }}
+                    exit={{ opacity: 0, y: 2 }}
                     transition={{ duration: 0.15, ease: 'easeOut' }}
                     className="flex items-center gap-1.5"
                   >
-                    <activeModelObj.icon size={11} className={activeModelObj.color} />
-                    <span className="font-bold text-white">{activeModelObj.name}</span>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded border font-semibold ${activeModelObj.badgeColor}`}>
+                    <activeModelObj.icon size={12} className={activeModelObj.color} />
+                    <span className="font-bold text-white tracking-tight">{activeModelObj.name}</span>
+                    <span className={`text-[8.5px] px-1.5 py-0.2 rounded border font-semibold ${activeModelObj.badgeColor}`}>
                       {activeModelObj.tag}
                     </span>
                   </motion.div>
                 </AnimatePresence>
-                <ChevronDown className={`w-2.5 h-2.5 text-gray-400 transition-transform duration-200 ml-0.5 ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform duration-200 ml-0.5 ${isOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Popup Menu */}
+              {/* Floating Model Popover Menu */}
               <AnimatePresence>
                 {isOpen && (
                   <motion.div
@@ -712,12 +800,13 @@ export default function AgentWorkspace({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl border border-white/15 bg-[#0e1118]/95 p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] flex flex-col gap-1 z-50 backdrop-blur-2xl"
+                    className="absolute bottom-full left-0 mb-2.5 w-76 rounded-2xl border border-white/[0.12] bg-[#0C0F16]/98 p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] flex flex-col gap-1 z-50 backdrop-blur-2xl"
                   >
                     <div className="flex items-center justify-between px-2.5 py-1 text-[9px] font-mono font-bold text-cyanAccent uppercase tracking-widest border-b border-white/[0.06] mb-0.5">
-                      <span>Select Engine</span>
+                      <span>Select Inference Engine</span>
                       <span className="text-[8px] text-gray-500 lowercase">active: {activeModelObj.name}</span>
                     </div>
+
                     {MODELS.map((model) => {
                       const isSelected = selectedModel === model.id;
                       const IconComp = model.icon;
@@ -732,7 +821,7 @@ export default function AgentWorkspace({
                             setSelectedModel(model.id);
                             setIsOpen(false);
                           }}
-                          className={`w-full flex items-start justify-between p-2 rounded-xl text-left transition-all cursor-pointer group ${
+                          className={`w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer group ${
                             isSelected
                               ? model.selectedBg
                               : 'hover:bg-white/[0.05] border border-transparent'
@@ -740,18 +829,18 @@ export default function AgentWorkspace({
                         >
                           <div className="flex items-start gap-2.5 min-w-0">
                             <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 transition-colors ${isSelected ? model.iconBg : 'bg-white/10 text-gray-400 group-hover:text-white'}`}>
-                              <IconComp size={12} />
+                              <IconComp size={13} />
                             </div>
                             <div className="flex flex-col min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className={`text-xs font-mono font-bold transition-colors ${isSelected ? model.activeText : 'text-white group-hover:text-cyanAccent'}`}>
                                   {model.name}
                                 </span>
-                                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${model.badgeColor}`}>
+                                <span className={`text-[8.5px] font-mono px-1.5 py-0.2 rounded border font-semibold ${model.badgeColor}`}>
                                   {model.tag}
                                 </span>
                                 <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-white/[0.06] text-gray-400">
-                                  {model.badge}
+                                  {model.speed}
                                 </span>
                               </div>
                               <span className="text-[10px] text-gray-400 font-light mt-0.5 leading-snug">
@@ -760,7 +849,7 @@ export default function AgentWorkspace({
                             </div>
                           </div>
                           {isSelected && (
-                            <Check size={13} className={`${model.color} shrink-0 mt-1`} />
+                            <Check size={14} className={`${model.color} shrink-0 mt-1`} />
                           )}
                         </motion.button>
                       );
@@ -774,31 +863,37 @@ export default function AgentWorkspace({
             <div className="flex items-center gap-1.5">
               {isGenerating ? (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.94 }}
                   type="button"
                   onClick={stopAiResponse}
                   title="Stop AI Generation"
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 text-red-400 font-mono text-[10px] font-bold shadow-[0_0_10px_rgba(239,68,68,0.25)] transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 font-mono text-[10px] font-bold shadow-[0_0_12px_rgba(244,63,94,0.3)] transition-all cursor-pointer"
                 >
-                  <Square size={10} className="fill-red-400" />
-                  <span>Stop</span>
+                  <Square size={10} className="fill-rose-400" />
+                  <span>STOP</span>
                 </motion.button>
               ) : (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
                   type="submit"
                   disabled={!inputValue.trim()}
-                  title="Send Prompt (Enter)"
-                  className="w-7 h-7 rounded-xl bg-cyanAccent hover:bg-cyanAccent/90 text-black flex items-center justify-center shadow-[0_0_12px_rgba(0,240,255,0.3)] transition-all disabled:opacity-20 disabled:pointer-events-none cursor-pointer shrink-0"
+                  title="Send Directive (Enter)"
+                  className="w-7.5 h-7.5 rounded-xl bg-cyanAccent hover:bg-cyan-300 text-black flex items-center justify-center shadow-[0_0_16px_rgba(0,240,255,0.4)] transition-all disabled:opacity-20 disabled:pointer-events-none cursor-pointer shrink-0"
                 >
-                  <ArrowUp size={13} className="stroke-[2.5]" />
+                  <ArrowUp size={14} className="stroke-[2.5]" />
                 </motion.button>
               )}
             </div>
           </div>
         </form>
+
+        {/* Micro Keyboard Hint */}
+        <div className="flex items-center justify-between px-1 pt-1.5 text-[9px] font-mono text-gray-500 select-none">
+          <span>Press ↵ to execute</span>
+          <span>Shift + ↵ for newline</span>
+        </div>
       </div>
     </motion.section>
   );

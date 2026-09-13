@@ -9,10 +9,12 @@ const toastSlice = createSlice({
   initialState,
   reducers: {
     addToast: (state, action) => {
-      // action.payload: { id, message, type, duration }
+      // action.payload: { id, message, type, duration, url, title }
       state.messages.push({
-        id: action.payload.id || Date.now().toString(),
+        id: action.payload.id || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         message: action.payload.message,
+        title: action.payload.title,
+        url: action.payload.url,
         type: action.payload.type || 'info',
         duration: action.payload.duration || 4500,
       });

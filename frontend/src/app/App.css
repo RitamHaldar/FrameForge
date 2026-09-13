@@ -259,6 +259,68 @@
     margin-left: 1px;
     animation: blinkCursor 1s infinite;
   }
+
+  /* Button shimmer sheen effect */
+  .btn-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shimmer::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -60%;
+    width: 20%;
+    height: 200%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.35),
+      transparent
+    );
+    transform: rotate(30deg);
+    transition: none;
+    pointer-events: none;
+    animation: btnShimmerSweep 5s infinite cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes btnShimmerSweep {
+    0% { transform: translateX(-100%) rotate(30deg); }
+    20%, 100% { transform: translateX(800%) rotate(30deg); }
+  }
+
+  /* Topology packet streaming keyframes */
+  @keyframes packetTravelDown {
+    0% { transform: translateY(-100%); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateY(100%); opacity: 0; }
+  }
+
+  @keyframes packetTravelHorizontal {
+    0% { transform: translateX(-100%); opacity: 0; }
+    25% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { transform: translateX(100%); opacity: 0; }
+  }
+
+  .packet-stream-v {
+    animation: packetTravelDown 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .packet-stream-h {
+    animation: packetTravelHorizontal 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /* Acceptance ripple animation */
+  @keyframes acceptFlash {
+    0% { background-color: rgba(0, 240, 255, 0.25); }
+    100% { background-color: transparent; }
+  }
+
+  .accepted-highlight {
+    animation: acceptFlash 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
 }
 
 @keyframes pulse-glow {
@@ -269,4 +331,18 @@
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
+}
+
+@keyframes toastCountdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes neuralWave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
 }

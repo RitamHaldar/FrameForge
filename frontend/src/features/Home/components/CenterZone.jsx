@@ -1,49 +1,94 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { addToast } from '../slices/toastSlice';
 import { Group as PanelGroup, Panel, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import Editor from '@monaco-editor/react';
 import { registerCompletion } from 'monacopilot';
-import { FileCode2, FileJson, FileImage, FileText, File, FolderOpen } from 'lucide-react';
+import {
+  FileCode2,
+  FileJson,
+  FileImage,
+  FileText,
+  File,
+  FolderOpen,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  Lock,
+  Save,
+  Terminal as TerminalIcon,
+  Sparkles,
+  Share2,
+  Check,
+  Globe,
+  Code2,
+  Trash2,
+  X,
+  ChevronDown,
+  ExternalLink,
+  Copy,
+} from 'lucide-react';
 
 const VerticalResizeHandle = () => (
-  <PanelResizeHandle className="h-3 group flex items-center justify-center cursor-row-resize outline-none z-20">
-    <div className="w-12 h-0.5 rounded-full bg-outline-variant/30 group-hover:bg-primary group-active:bg-primary transition-colors shadow-sm"></div>
+  <PanelResizeHandle className="h-2.5 group flex items-center justify-center cursor-row-resize outline-none z-20 select-none my-0.5">
+    <div className="w-16 group-hover:w-24 h-1 rounded-full bg-white/10 group-hover:bg-cyanAccent group-active:bg-cyanAccent transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 group-hover:shadow-[0_0_12px_rgba(0,240,255,0.7)]">
+      <div className="w-1.5 h-0.5 rounded-full bg-black/50"></div>
+      <div className="w-1.5 h-0.5 rounded-full bg-black/50"></div>
+    </div>
   </PanelResizeHandle>
 );
 
 const getFileIcon = (filename) => {
-  if (!filename) return <File className="w-3.5 h-3.5 text-outline/50" />;
+  if (!filename) return <File className="w-3.5 h-3.5 text-textMuted" />;
   const name = filename.toLowerCase();
   if (name.endsWith('.jsx') || name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.tsx')) {
-    return <FileCode2 className="w-3.5 h-3.5 text-[#ffbd2e]" />; // warm gold for JS/TS
+    return <FileCode2 className="w-3.5 h-3.5 text-cyanAccent" />;
   }
   if (name.endsWith('.json')) {
-    return <FileJson className="w-3.5 h-3.5 text-[#27c93f]" />; // bright green for JSON
+    return <FileJson className="w-3.5 h-3.5 text-emerald-400" />;
   }
   if (name.endsWith('.css')) {
-    return <FileCode2 className="w-3.5 h-3.5 text-[#2d9cdb]" />; // blue for CSS
+    return <FileCode2 className="w-3.5 h-3.5 text-sky-400" />;
   }
   if (name.endsWith('.html')) {
-    return <FileCode2 className="w-3.5 h-3.5 text-[#ff5f56]" />; // red-orange for HTML
+    return <FileCode2 className="w-3.5 h-3.5 text-rose-400" />;
   }
   if (name.match(/\.(png|jpe?g|svg|gif|webp)$/)) {
-    return <FileImage className="w-3.5 h-3.5 text-[#a1a1aa]" />; // silver for images
+    return <FileImage className="w-3.5 h-3.5 text-amber-400" />;
   }
   if (name.endsWith('.md') || name.endsWith('.txt')) {
-    return <FileText className="w-3.5 h-3.5 text-[#bbbbbb]" />;
+    return <FileText className="w-3.5 h-3.5 text-textSecondary" />;
   }
-  return <File className="w-3.5 h-3.5 text-outline/40" />;
+  return <File className="w-3.5 h-3.5 text-textMuted" />;
 };
 
-export default function CenterZone({ sandbox, socketRef, terminalVersion, reconnectTerminal, fetchFiles, selectedFile, selectedFileContent, isLoadingFile, saveFile, maximizedPanel, setMaximizedPanel, files = [], onSelectFile, optimizeCode, isOptimizing }) {
+export default function CenterZone({
+  sandbox,
+  socketRef,
+  terminalVersion,
+  reconnectTerminal,
+  fetchFiles,
+  selectedFile,
+  selectedFileContent,
+  isLoadingFile,
+  saveFile,
+  maximizedPanel,
+  setMaximizedPanel,
+  files = [],
+  onSelectFile,
+  optimizeCode,
+  isOptimizing,
+}) {
+  const dispatch = useDispatch();
   const terminalRef = useRef(null);
   const xtermRef = useRef(null);
   const previewTerminalRef = useRef(null);
   const previewXtermRef = useRef(null);
-  const [viewMode, setViewMode] = useState('pc');
+  const [viewMode] = useState('pc');
   const [activeTab, setActiveTab] = useState('preview');
   const [isReloading, setIsReloading] = useState(false);
   const [isTerminalReloading, setIsTerminalReloading] = useState(false);
@@ -53,30 +98,32 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const [mobileWidth, setMobileWidth] = useState(380);
   const dropdownRef = useRef(null);
 
+  // Preview Terminal in Enlarged Mode
   useEffect(() => {
     if (!showPreviewTerminal || !sandbox || !socketRef || !socketRef.current || !previewTerminalRef.current) return;
 
     let term;
     let resizeObserver;
     let handleOutput;
+    let fitAddon;
+    let isDisposed = false;
 
     try {
-      // Initialize xterm with transparent background, JetBrains Mono, white cursor, and 1.5 line height
       term = new Terminal({
         theme: {
           background: 'transparent',
-          foreground: '#ffffff',
-          cursor: '#ffffff',
-          cursorBlink: '#ffffff',
-          selectionBackground: 'rgba(255, 255, 255, 0.15)',
-          black: '#000000',
-          red: '#ff5f56',
-          green: '#a1a1aa',
-          yellow: '#ffbd2e',
-          blue: '#e4e4e7',
-          magenta: '#ffffff',
-          cyan: '#ffffff',
-          white: '#ffffff',
+          foreground: '#F5F5F5',
+          cursor: '#00F0FF',
+          cursorBlink: '#00F0FF',
+          selectionBackground: 'rgba(0, 240, 255, 0.25)',
+          black: '#08090A',
+          red: '#f43f5e',
+          green: '#34d399',
+          yellow: '#fbbf24',
+          blue: '#38bdf8',
+          magenta: '#c084fc',
+          cyan: '#00F0FF',
+          white: '#F5F5F5',
         },
         fontFamily: '"JetBrains Mono", monospace',
         fontSize: 12,
@@ -84,15 +131,15 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
         lineHeight: 1.5,
       });
 
-      const fitAddon = new FitAddon();
+      fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
       term.open(previewTerminalRef.current);
 
-      // Output initial bash prompt matching the sandbox ID
       term.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
 
       const handleFit = () => {
-        if (previewTerminalRef.current && previewTerminalRef.current.clientWidth > 0 && previewTerminalRef.current.clientHeight > 0) {
+        if (isDisposed || !term || !previewTerminalRef.current) return;
+        if (previewTerminalRef.current.clientWidth > 0 && previewTerminalRef.current.clientHeight > 0) {
           try {
             fitAddon.fit();
           } catch (e) {
@@ -101,7 +148,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
         }
       };
 
-      setTimeout(handleFit, 150); // wait for spring layout animation to settle
+      setTimeout(handleFit, 150);
 
       resizeObserver = new ResizeObserver(handleFit);
       resizeObserver.observe(previewTerminalRef.current);
@@ -109,13 +156,17 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       const socket = socketRef.current;
 
       handleOutput = (data) => {
-        term.write(data);
+        if (!isDisposed && term) {
+          term.write(data);
+        }
       };
 
       socket.on('terminal-output', handleOutput);
 
       term.onData((data) => {
-        socket.emit('terminal-input', data);
+        if (!isDisposed) {
+          socket.emit('terminal-input', data);
+        }
       });
 
       previewXtermRef.current = term;
@@ -124,9 +175,18 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     }
 
     return () => {
+      isDisposed = true;
       try {
         if (resizeObserver) resizeObserver.disconnect();
-        if (term) term.dispose();
+        if (fitAddon) {
+          fitAddon.dispose();
+        }
+        if (term) {
+          if (term._core?._viewport?._innerRefresh) {
+            term._core._viewport._innerRefresh = () => {};
+          }
+          term.dispose();
+        }
         if (socketRef.current && handleOutput) {
           socketRef.current.off('terminal-output', handleOutput);
         }
@@ -136,6 +196,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     };
   }, [showPreviewTerminal, sandbox, socketRef, terminalVersion]);
 
+  // Click outside listener for dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -153,16 +214,13 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
   const isDirty = editorValue !== (selectedFileContent || '');
 
-  // Keep a fresh reference to bypass stale closure inside third-party editor callbacks
   const saveRef = useRef(null);
   saveRef.current = { selectedFile, editorValue, isDirty, isSaving, saveFile };
 
-  // Synchronize editor content when selected file content changes
   useEffect(() => {
     setEditorValue(selectedFileContent || '');
   }, [selectedFileContent]);
 
-  // Auto-switch to Code tab when a file is selected
   useEffect(() => {
     if (selectedFile) {
       setActiveTab('code');
@@ -173,7 +231,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     setEditorValue(value || '');
   };
 
-
   const handleSave = async () => {
     const fresh = saveRef.current;
     if (!fresh.selectedFile || !fresh.isDirty || fresh.isSaving) return;
@@ -181,9 +238,23 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     if (fresh.saveFile) {
       const res = await fresh.saveFile(fresh.selectedFile, fresh.editorValue);
       if (res.success) {
-        console.log('File saved successfully');
+        dispatch(
+          addToast({
+            type: 'success',
+            title: 'FILE SAVED',
+            message: `Successfully saved ${fresh.selectedFile.split(/[/\\]/).pop()}`,
+            duration: 3000,
+          })
+        );
       } else {
-        alert(`Failed to save file: ${res.error}`);
+        dispatch(
+          addToast({
+            type: 'error',
+            title: 'SAVE FAILED',
+            message: `Failed to save file: ${res.error || 'Unknown error'}`,
+            duration: 4500,
+          })
+        );
       }
     }
     setIsSaving(false);
@@ -279,30 +350,32 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     };
   }, [selectedFile]);
 
+  // Main Terminal in Bottom Panel
   useEffect(() => {
     if (!sandbox || !socketRef || !socketRef.current || !terminalRef.current) return;
 
     let term;
     let resizeObserver;
     let handleOutput;
+    let fitAddon;
+    let isDisposed = false;
 
     try {
-      // Initialize xterm with transparent background, JetBrains Mono, white cursor, and 1.5 line height
       term = new Terminal({
         theme: {
           background: 'transparent',
-          foreground: '#ffffff',
-          cursor: '#ffffff',
-          cursorBlink: '#ffffff',
-          selectionBackground: 'rgba(255, 255, 255, 0.15)',
-          black: '#000000',
-          red: '#ff5f56',
-          green: '#a1a1aa',
-          yellow: '#ffbd2e',
-          blue: '#e4e4e7',
-          magenta: '#ffffff',
-          cyan: '#ffffff',
-          white: '#ffffff',
+          foreground: '#F5F5F5',
+          cursor: '#00F0FF',
+          cursorBlink: '#00F0FF',
+          selectionBackground: 'rgba(0, 240, 255, 0.25)',
+          black: '#08090A',
+          red: '#f43f5e',
+          green: '#34d399',
+          yellow: '#fbbf24',
+          blue: '#38bdf8',
+          magenta: '#c084fc',
+          cyan: '#00F0FF',
+          white: '#F5F5F5',
         },
         fontFamily: '"JetBrains Mono", monospace',
         fontSize: 13,
@@ -310,15 +383,15 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
         lineHeight: 1.5,
       });
 
-      const fitAddon = new FitAddon();
+      fitAddon = new FitAddon();
       term.loadAddon(fitAddon);
       term.open(terminalRef.current);
 
-      // Output initial bash prompt matching the sandbox ID
       term.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
 
       const handleFit = () => {
-        if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+        if (isDisposed || !term || !terminalRef.current) return;
+        if (terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
           try {
             fitAddon.fit();
           } catch (e) {
@@ -327,7 +400,6 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
         }
       };
 
-      // Slight delay to ensure DOM is ready for measuring
       setTimeout(handleFit, 50);
 
       resizeObserver = new ResizeObserver(handleFit);
@@ -336,13 +408,17 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
       const socket = socketRef.current;
 
       handleOutput = (data) => {
-        term.write(data);
+        if (!isDisposed && term) {
+          term.write(data);
+        }
       };
 
       socket.on('terminal-output', handleOutput);
 
       term.onData((data) => {
-        socket.emit('terminal-input', data);
+        if (!isDisposed) {
+          socket.emit('terminal-input', data);
+        }
       });
 
       xtermRef.current = term;
@@ -351,9 +427,18 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     }
 
     return () => {
+      isDisposed = true;
       try {
         if (resizeObserver) resizeObserver.disconnect();
-        if (term) term.dispose();
+        if (fitAddon) {
+          fitAddon.dispose();
+        }
+        if (term) {
+          if (term._core?._viewport?._innerRefresh) {
+            term._core._viewport._innerRefresh = () => {};
+          }
+          term.dispose();
+        }
         if (socketRef.current && handleOutput) {
           socketRef.current.off('terminal-output', handleOutput);
         }
@@ -366,9 +451,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
   const handleReload = () => {
     if (isReloading) return;
     setIsReloading(true);
-    // Change the key to force iframe remount/reload
     setIframeKey(prev => prev + 1);
-    // Fetch dynamic files from listFiles API
     if (sandbox?.sandboxId && fetchFiles) {
       fetchFiles(sandbox.sandboxId);
     }
@@ -388,164 +471,278 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
     }, 800);
   };
 
+  const handleClearTerminal = () => {
+    if (xtermRef.current) {
+      xtermRef.current.clear();
+      xtermRef.current.write('\r\x1b[32m[Console cleared by user]\x1b[0m\r\n');
+      if (sandbox?.sandboxId) {
+        xtermRef.current.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
+      } else {
+        xtermRef.current.write(`root@sandbox-pod-sandbox:/workspace# `);
+      }
+    }
+  };
+
+  const handleCopyUrl = () => {
+    if (sandbox?.previewUrl) {
+      navigator.clipboard.writeText(sandbox.previewUrl);
+      dispatch(
+        addToast({
+          type: 'success',
+          title: 'LINK COPIED',
+          message: 'Preview URL copied to clipboard',
+          url: sandbox.previewUrl,
+          duration: 4500,
+        })
+      );
+    } else {
+      dispatch(
+        addToast({
+          type: 'warning',
+          title: 'SANDBOX PENDING',
+          message: 'Sandbox preview URL is still initializing. Please wait a moment.',
+          duration: 3500,
+        })
+      );
+    }
+  };
+
   return (
     <motion.main
       initial={{ scale: 0.98, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.6, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
       style={{ transform: maximizedPanel ? 'none' : undefined }}
-      className="flex-1 h-full overflow-hidden z-10 relative"
+      className="flex-1 h-full overflow-hidden z-10 relative font-sans text-textPrimary"
     >
       <PanelGroup orientation="vertical">
+        {/* TOP PANEL: PREVIEW & CODE ZONE */}
         <Panel defaultSize={60} minSize={30}>
           <motion.div
             layout
-            transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className={`w-full h-full bg-surface-container/70 backdrop-blur-md border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-lg ${maximizedPanel === 'preview'
-              ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container rounded-none'
-              : 'relative'
-              }`}
+            transition={{ type: "spring", stiffness: 340, damping: 28 }}
+            className={`w-full h-full bg-[#0A0C0E]/90 backdrop-blur-xl border border-white/[0.08] rounded-xl flex flex-col overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.6)] ${
+              maximizedPanel === 'preview'
+                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-[#0A0C0E] rounded-none'
+                : 'relative'
+            }`}
           >
-            <header className="flex items-center justify-between px-4 py-1.5 bg-surface-container-lowest border-b border-outline-variant/25 z-20 select-none h-11">
-              {/* Left: Open in Editor / Close Editor Toggle Button */}
-              <div className="flex items-center gap-3 z-20">
+            {/* Header: Unified Ultra-Sleek Glass Chrome Toolbar */}
+            <header className="relative flex items-center justify-between px-3.5 py-1.5 bg-gradient-to-r from-[#0C0E12] via-[#090B0E] to-[#0C0E12] border-b border-white/[0.08] backdrop-blur-xl z-20 select-none h-12">
+              {/* Ambient top highlight hairline */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyanAccent/25 to-transparent pointer-events-none" />
+
+              {/* Left Section: macOS Traffic Lights & Window Control Chip */}
+              <div className="flex items-center gap-2.5 z-20 shrink-0">
+                {/* Window Traffic Lights */}
+                <div className="flex items-center gap-1.5 pr-1">
+                  <motion.button
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setMaximizedPanel(null)}
+                    className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] border border-[#E0443E]/80 shadow-[0_0_6px_rgba(255,95,86,0.35)] cursor-pointer focus:outline-none transition-transform"
+                    title="Close"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] border border-[#DEA123]/80 shadow-[0_0_6px_rgba(255,189,46,0.35)] cursor-pointer focus:outline-none transition-transform"
+                    title="Minimize"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setMaximizedPanel(maximizedPanel === 'preview' ? null : 'preview')}
+                    className="w-2.5 h-2.5 rounded-full bg-[#27C93F] border border-[#1AAB29]/80 shadow-[0_0_6px_rgba(39,201,63,0.35)] cursor-pointer focus:outline-none transition-transform"
+                    title={maximizedPanel === 'preview' ? "Restore Window" : "Full Screen"}
+                  />
+                </div>
+
+                <div className="h-4 w-px bg-white/10 hidden sm:block" />
+
+                {/* Maximize / Close Editor Button */}
                 <AnimatePresence mode="wait">
                   {maximizedPanel !== 'preview' ? (
                     <motion.button
                       key="btn-enlarge"
-                      initial={{ opacity: 0, x: -12, scale: 0.95 }}
+                      initial={{ opacity: 0, x: -6, scale: 0.96 }}
                       animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -12, scale: 0.95 }}
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      exit={{ opacity: 0, x: -6, scale: 0.96 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 420, damping: 26 }}
                       onClick={() => setMaximizedPanel('preview')}
-                      className="flex items-center gap-2 px-3 py-1 bg-primary/10 hover:bg-primary/20 border border-primary/20 hover:border-primary/45 text-primary hover:shadow-[0_0_15px_rgba(170,59,255,0.2)] transition-all duration-300 select-none active:scale-95 cursor-pointer font-bold font-mono-data text-[10px] tracking-wide h-7.5 rounded-lg shadow-sm"
+                      className="group relative flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] hover:bg-cyanAccent/[0.08] border border-white/[0.08] hover:border-cyanAccent/40 text-textSecondary hover:text-cyanAccent shadow-sm hover:shadow-[0_0_12px_rgba(0,240,255,0.15)] transition-all duration-200 select-none cursor-pointer font-mono font-medium text-[11px] tracking-tight h-8 rounded-lg"
+                      title="Expand into full dual preview & code editor mode"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" x2="14" y1="3" y2="10" /><line x1="3" x2="10" y1="21" y2="14" /></svg>
-                      <span>Open in Editor</span>
+                      <Maximize2 className="w-3.5 h-3.5 text-cyanAccent/70 group-hover:text-cyanAccent group-hover:scale-110 transition-all duration-200" />
+                      <span className="font-semibold tracking-wide">Open in Editor</span>
                     </motion.button>
                   ) : (
                     <motion.button
                       key="btn-minimize"
-                      initial={{ opacity: 0, x: -12, scale: 0.95 }}
+                      initial={{ opacity: 0, x: -6, scale: 0.96 }}
                       animate={{ opacity: 1, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, x: -12, scale: 0.95 }}
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                      exit={{ opacity: 0, x: -6, scale: 0.96 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 420, damping: 26 }}
                       onClick={() => setMaximizedPanel(null)}
-                      className="flex items-center gap-2 px-3 py-1 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/35 text-on-surface hover:text-white transition-all duration-300 select-none active:scale-95 cursor-pointer font-bold font-mono-data text-[10px] tracking-wide h-7.5 rounded-lg shadow-sm"
+                      className="group relative flex items-center gap-1.5 px-3 py-1 bg-white/[0.06] hover:bg-white/[0.12] border border-white/15 hover:border-white/30 text-white shadow-sm transition-all duration-200 select-none cursor-pointer font-mono font-medium text-[11px] tracking-tight h-8 rounded-lg"
+                      title="Exit editor fullscreen"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" x2="21" y1="10" y2="3" /><line x1="10" x2="3" y1="14" y2="21" /></svg>
-                      <span>Close Editor</span>
+                      <Minimize2 className="w-3.5 h-3.5 text-white/70 group-hover:text-white group-hover:scale-110 transition-all duration-200" />
+                      <span className="font-semibold tracking-wide">Close Editor</span>
                     </motion.button>
                   )}
                 </AnimatePresence>
-
-                {/* Safari style Back/Forward arrows */}
-                <div className="hidden sm:flex items-center gap-0.5 text-on-surface-variant/40">
-                  <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-low hover:text-on-surface transition-all cursor-not-allowed">
-                    <span className="material-symbols-outlined text-[16px]">chevron_left</span>
-                  </button>
-                  <button className="w-6 h-6 flex items-center justify-center rounded hover:bg-surface-container-low hover:text-on-surface transition-all cursor-not-allowed">
-                    <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-                  </button>
-                </div>
               </div>
 
-              {/* Center: Safari Unified Smart Address Bar & Preview Terminal Toggle */}
-              <div className="flex-1 max-w-[420px] min-w-[180px] mx-4 relative z-20 flex items-center justify-center gap-3">
+              {/* Center: Luxury Browser Address Bar & Actions */}
+              <div className="flex-1 max-w-[460px] min-w-[180px] mx-2 sm:mx-4 relative z-20 flex items-center justify-center gap-2">
                 {!(activeTab === 'code' && maximizedPanel !== 'preview') ? (
-                  <div className="flex-1 max-w-[220px]">
-                    <div className="flex items-center justify-between bg-surface-container/70 hover:bg-surface-container border border-outline-variant/20 focus-within:border-outline/40 transition-all rounded-md px-3 h-7 text-center group">
-                      <div className="flex items-center gap-1.5 text-on-surface-variant/80 text-center mx-auto truncate max-w-full">
-                        <span className="material-symbols-outlined text-[11px]">lock</span>
-                        <span className="font-mono-data text-[11px] text-on-surface tracking-wide truncate" title={sandbox?.previewUrl || 'Waiting...'}>
-                          {sandbox?.previewUrl ? new URL(sandbox.previewUrl).host : 'Loading sandbox...'}
+                  <div className="w-full max-w-[380px] sm:max-w-[420px]">
+                    <div className="flex items-center justify-between bg-[#080A0D]/90 hover:bg-[#0D1015] border border-white/[0.08] hover:border-white/[0.16] focus-within:border-cyanAccent/40 transition-all duration-200 rounded-xl px-2.5 h-8 text-center group shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)] backdrop-blur-md">
+                      {/* Left: SSL Badge + Status Beacon */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-mono">
+                          <Lock className="w-2.5 h-2.5 text-emerald-400 drop-shadow-[0_0_4px_rgba(52,211,153,0.5)]" />
+                          <span className="text-[9px] font-bold tracking-wider text-emerald-400/90 hidden sm:inline">SSL</span>
+                        </div>
+                        {sandbox?.previewUrl && (
+                          <span className="relative flex h-1.5 w-1.5" title="Sandbox Active">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 shadow-[0_0_6px_#10b981]"></span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Center: Interactive URL Host */}
+                      <div
+                        onClick={handleCopyUrl}
+                        className="flex-1 px-2 flex items-center justify-center text-center truncate cursor-pointer group/host"
+                        title={sandbox?.previewUrl ? `${sandbox.previewUrl} (Click to copy)` : 'Connecting sandbox...'}
+                      >
+                        <span className="font-mono text-[11px] text-white/80 group-hover/host:text-cyanAccent tracking-tight truncate transition-colors">
+                          {sandbox?.previewUrl ? (
+                            <>
+                              <span className="text-white/30 text-[10px] mr-1 hidden md:inline">https://</span>
+                              <span className="font-medium">{new URL(sandbox.previewUrl).host}</span>
+                            </>
+                          ) : (
+                            <span className="text-textMuted italic text-[10.5px]">Starting sandbox environment...</span>
+                          )}
                         </span>
                       </div>
-                      <button
-                        onClick={handleReload}
-                        className="flex items-center text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer"
-                        title="Reload Page"
-                      >
-                        <span className={`material-symbols-outlined text-[12px] ${isReloading ? 'animate-spin' : ''}`}>refresh</span>
-                      </button>
+
+                      {/* Right: Quick reload inside address bar */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <motion.button
+                          onClick={handleReload}
+                          whileHover={{ scale: 1.15, rotate: 60 }}
+                          whileTap={{ scale: 0.88 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                          className="w-5 h-5 rounded-md flex items-center justify-center text-textMuted hover:text-cyanAccent hover:bg-white/[0.08] transition-colors cursor-pointer"
+                          title="Reload Preview"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isReloading ? 'animate-spin text-cyanAccent' : ''}`} />
+                        </motion.button>
+                      </div>
                     </div>
                   </div>
                 ) : (
                   selectedFile && (
-                    <div className="flex items-center gap-2 bg-surface-container/40 border border-outline-variant/15 rounded-lg px-3 py-1 h-8 shadow-sm">
-                      <div className="flex items-center bg-surface-container-lowest/80 px-2.5 py-0.5 rounded border border-outline-variant/20 font-label-caps text-[9px] text-on-surface gap-1.5 h-6">
-                        <span className="material-symbols-outlined text-outline text-[11.5px]">javascript</span>
-                        <span className="truncate max-w-[140px] font-semibold tracking-wide lowercase">{selectedFile.split(/[/\\]/).pop()}</span>
+                    <div className="flex items-center gap-2 bg-[#080A0D]/90 border border-white/[0.08] rounded-xl px-2.5 py-1 h-8 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)] backdrop-blur-md">
+                      <div className="flex items-center bg-white/[0.05] px-2 py-0.5 rounded-lg border border-white/10 text-[10.5px] font-mono text-white gap-1.5 h-6">
+                        {getFileIcon(selectedFile)}
+                        <span className="truncate max-w-[140px] font-medium lowercase tracking-tight">{selectedFile.split(/[/\\]/).pop()}</span>
+                        {isDirty && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_6px_#fbbf24]" title="Unsaved changes" />
+                        )}
                       </div>
-                      <button
+                      <motion.button
                         onClick={handleSave}
                         disabled={!isDirty || isSaving}
-                        className={`flex items-center gap-1.5 px-3 py-0.5 rounded transition-all font-bold font-mono-data text-[9.5px] h-6 active:scale-95 border ${isDirty
-                          ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
-                          : 'bg-surface-container-lowest/50 text-on-surface-variant/35 border-outline-variant/15 cursor-not-allowed shadow-none'
-                          }`}
+                        whileHover={isDirty && !isSaving ? { scale: 1.04 } : {}}
+                        whileTap={isDirty && !isSaving ? { scale: 0.94 } : {}}
+                        className={`flex items-center gap-1.5 px-3 py-0.5 rounded-lg transition-all font-semibold font-mono text-[10px] h-6 border select-none ${
+                          isDirty
+                            ? 'bg-gradient-to-r from-cyanAccent to-[#00D0FF] text-black border-cyanAccent shadow-[0_0_12px_rgba(0,240,255,0.35)] cursor-pointer'
+                            : 'bg-white/[0.04] text-textMuted border-white/10 cursor-not-allowed'
+                        }`}
                         title="Save File (Ctrl+S)"
                       >
-                        <span className={`material-symbols-outlined text-[11px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
-                        {isSaving ? 'Saving' : 'Save'}
-                      </button>
+                        {isSaving ? (
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <Save className="w-2.5 h-2.5" />
+                        )}
+                        <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                      </motion.button>
                     </div>
                   )
                 )}
 
+                {/* Enlarged Mode: Terminal Toggle Button */}
                 {maximizedPanel === 'preview' && (
-                  <button
+                  <motion.button
                     onClick={() => setShowPreviewTerminal(!showPreviewTerminal)}
-                    className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${showPreviewTerminal
-                      ? 'bg-primary text-on-primary border-primary hover:opacity-90 shadow-md'
-                      : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
-                      }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    className={`flex items-center gap-1.5 px-3 h-8 rounded-lg border font-mono text-[10px] font-semibold cursor-pointer transition-all select-none whitespace-nowrap shadow-sm ${
+                      showPreviewTerminal
+                        ? 'bg-cyanAccent text-black border-cyanAccent shadow-[0_0_14px_rgba(0,240,255,0.35)]'
+                        : 'bg-white/[0.04] hover:bg-cyanAccent/10 border-white/10 hover:border-cyanAccent/30 text-cyanAccent'
+                    }`}
                   >
-                    <span className="material-symbols-outlined text-[12px]">terminal</span>
+                    <TerminalIcon className="w-3 h-3" />
                     <span>{showPreviewTerminal ? 'Hide Terminal' : 'Show Terminal'}</span>
-                  </button>
+                  </motion.button>
                 )}
 
+                {/* Enlarged Mode: Optimize Code Button */}
                 {maximizedPanel === 'preview' && selectedFile && (
-                  <button
+                  <motion.button
                     onClick={handleOptimizeCode}
                     disabled={isOptimizing}
-                    className={`flex items-center gap-1.5 px-3 h-7 rounded border font-label-caps text-[9px] font-bold cursor-pointer transition-all duration-300 select-none active:scale-95 whitespace-nowrap ${isOptimizing
-                      ? 'bg-primary/20 text-primary border-primary/20 cursor-not-allowed shadow-none'
-                      : 'bg-primary/10 hover:bg-primary/20 border-primary/20 hover:border-primary/40 text-primary'
-                      }`}
+                    whileHover={!isOptimizing ? { scale: 1.02 } : {}}
+                    whileTap={!isOptimizing ? { scale: 0.96 } : {}}
+                    className={`flex items-center gap-1.5 px-3 h-8 rounded-lg border font-mono text-[10px] font-semibold cursor-pointer transition-all select-none whitespace-nowrap shadow-sm ${
+                      isOptimizing
+                        ? 'bg-amber-400/20 text-amber-300 border-amber-400/30 cursor-not-allowed'
+                        : 'bg-amber-400/10 hover:bg-amber-400/20 border-amber-400/30 hover:border-amber-400/50 text-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.15)]'
+                    }`}
                   >
-                    <span className={`material-symbols-outlined text-[12px] ${isOptimizing ? 'animate-spin' : ''}`}>
-                      {isOptimizing ? 'progress_activity' : 'bolt'}
-                    </span>
+                    <Sparkles className={`w-3 h-3 ${isOptimizing ? 'animate-spin' : ''}`} />
                     <span>{isOptimizing ? 'Optimizing...' : 'Optimize Code'}</span>
-                  </button>
+                  </motion.button>
                 )}
 
+                {/* Enlarged Mode: Inline Suggestions Toggle */}
                 {maximizedPanel === 'preview' && selectedFile && (
-                  <button
+                  <motion.button
                     onClick={() => {
                       const newValue = !showSuggestions;
                       setShowSuggestions(newValue);
                       showSuggestionsRef.current = newValue;
                     }}
-                    className="flex items-center gap-1.5 px-2.5 h-7 rounded border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface text-[9px] font-bold font-label-caps cursor-pointer active:scale-95 transition-all select-none whitespace-nowrap shadow-sm"
-                    title={showSuggestions ? "Hide inline AI suggestions" : "Show inline AI suggestions"}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="flex items-center gap-1.5 px-2.5 h-8 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-textSecondary hover:text-white text-[10px] font-mono font-medium cursor-pointer transition-all select-none whitespace-nowrap shadow-sm"
+                    title={showSuggestions ? "Disable inline AI suggestions" : "Enable inline AI suggestions"}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
                       showSuggestions 
-                        ? 'bg-primary shadow-[0_0_6px_rgba(170,59,255,0.8)] animate-pulse' 
-                        : 'bg-outline-variant/50'
+                        ? 'bg-cyanAccent shadow-[0_0_8px_#00f0ff] animate-pulse' 
+                        : 'bg-white/20'
                     }`} />
-                    <span>{showSuggestions ? 'Show Suggestions' : 'Hide Suggestions'}</span>
-                  </button>
+                    <span>{showSuggestions ? 'AI Suggestions ON' : 'AI Suggestions OFF'}</span>
+                  </motion.button>
                 )}
               </div>
 
-              {/* Right: Tab Mode, View Controls & active file tag */}
-              <div className="flex items-center gap-2 z-20">
-
-
+              {/* Right: Tab Mode, View Controls & Actions */}
+              <div className="flex items-center gap-2 z-20 shrink-0">
                 {/* Mobile Preview Width Slider */}
                 <AnimatePresence>
                   {maximizedPanel === 'preview' && viewMode === 'mobile' && (
@@ -554,112 +751,156 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                       animate={{ opacity: 1, width: 'auto', scale: 1 }}
                       exit={{ opacity: 0, width: 0, scale: 0.95 }}
                       transition={{ type: "spring", stiffness: 300, damping: 26 }}
-                      className="flex items-center gap-2 bg-surface-container px-2.5 rounded-md border border-outline-variant/20 h-7 overflow-hidden shadow-sm"
+                      className="flex items-center gap-2 bg-[#080A0D]/90 px-2.5 rounded-xl border border-white/10 h-8 overflow-hidden shadow-inner"
                     >
-                      <span className="font-mono-data text-[9px] text-outline/80 whitespace-nowrap">Width:</span>
+                      <span className="font-mono text-[9px] text-textMuted whitespace-nowrap">Width:</span>
                       <input
                         type="range"
                         min="320"
                         max="768"
                         value={mobileWidth}
                         onChange={(e) => setMobileWidth(Number(e.target.value))}
-                        className="w-16 sm:w-24 accent-primary h-1 rounded bg-outline-variant/30 cursor-pointer focus:outline-none"
+                        className="w-16 sm:w-24 accent-cyanAccent h-1 rounded bg-white/20 cursor-pointer focus:outline-none"
                       />
-                      <span className="font-mono-data text-[9.5px] text-primary font-bold min-w-[34px] text-right">{mobileWidth}px</span>
+                      <span className="font-mono text-[9.5px] text-cyanAccent font-bold min-w-[34px] text-right">{mobileWidth}px</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {/* Tab Switchers (Preview / Code) or Save Option in enlarged modal */}
+                {/* Tab Switchers (Preview / Code) with High-Precision Sliding Pill */}
                 {maximizedPanel === 'preview' ? (
                   selectedFile && (
-                    <div className="flex items-center gap-1.5 bg-surface-container px-2 py-0.5 rounded-md border border-outline-variant/20 h-7">
-                      <div className="flex items-center bg-surface-container-lowest px-2 py-0.5 rounded border border-outline-variant/25 font-label-caps text-[9px] text-on-surface gap-1.5 h-5.5">
-                        <span className="material-symbols-outlined text-outline text-[11px]">javascript</span>
-                        <span className="truncate max-w-[80px] font-semibold lowercase">{selectedFile.split(/[/\\]/).pop()}</span>
+                    <div className="flex items-center gap-1.5 bg-[#080A0D]/90 px-2 py-0.5 rounded-xl border border-white/10 h-8 shadow-inner">
+                      <div className="flex items-center bg-white/[0.05] px-2 py-0.5 rounded-lg border border-white/10 font-mono text-[9.5px] text-white gap-1.5 h-6">
+                        {getFileIcon(selectedFile)}
+                        <span className="truncate max-w-[80px] font-medium lowercase">{selectedFile.split(/[/\\]/).pop()}</span>
                       </div>
-                      <button
+                      <motion.button
                         onClick={handleSave}
                         disabled={!isDirty || isSaving}
-                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded transition-all font-bold font-mono-data text-[9px] h-5.5 active:scale-95 border ${isDirty
-                          ? 'bg-primary text-on-primary border-primary hover:opacity-90 cursor-pointer shadow-md'
-                          : 'bg-surface-container-lowest text-on-surface-variant/30 border-outline-variant/20 cursor-not-allowed shadow-none'
-                          }`}
+                        whileHover={isDirty && !isSaving ? { scale: 1.04 } : {}}
+                        whileTap={isDirty && !isSaving ? { scale: 0.94 } : {}}
+                        className={`flex items-center gap-1 px-2.5 py-0.5 rounded-lg transition-all font-semibold font-mono text-[9px] h-6 border ${
+                          isDirty
+                            ? 'bg-cyanAccent text-black border-cyanAccent hover:bg-cyanAccent/90 cursor-pointer shadow-[0_0_10px_rgba(0,240,255,0.3)]'
+                            : 'bg-white/5 text-textMuted border-white/10 cursor-not-allowed'
+                        }`}
                         title="Save File (Ctrl+S)"
                       >
-                        <span className={`material-symbols-outlined text-[11px] ${isSaving ? 'animate-spin' : ''}`}>{isSaving ? 'progress_activity' : 'save'}</span>
-                        {isSaving ? 'Saving' : 'Save'}
-                      </button>
+                        {isSaving ? (
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                        ) : (
+                          <Save className="w-2.5 h-2.5" />
+                        )}
+                        <span>{isSaving ? 'Saving' : 'Save'}</span>
+                      </motion.button>
                     </div>
                   )
                 ) : (
-                  <div className="flex bg-surface-container rounded-md p-0.5 border border-outline-variant/20 h-7">
+                  <div className="flex items-center p-1 bg-[#080A0D]/90 border border-white/[0.08] rounded-xl h-8 relative shadow-[inset_0_1px_3px_rgba(0,0,0,0.7)] backdrop-blur-md">
                     <button
                       onClick={() => setActiveTab('preview')}
-                      className={`px-2.5 rounded font-label-caps text-[10px] tracking-wider transition-all flex items-center gap-1.5 h-full ${activeTab === 'preview' ? 'bg-surface-container-high text-primary font-bold shadow-md border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
+                      className={`relative px-3 py-1 rounded-lg font-mono text-[11px] font-medium tracking-tight transition-all duration-200 flex items-center gap-1.5 h-full z-10 cursor-pointer select-none ${
+                        activeTab === 'preview'
+                          ? 'text-white font-semibold'
+                          : 'text-textMuted hover:text-white/80'
+                      }`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><rect width="20" height="20" x="2" y="2" rx="2" /><path d="M2 10h20" /><circle cx="6" cy="6" r="0.75" /></svg>
-                      Preview
+                      {activeTab === 'preview' && (
+                        <motion.div
+                          layoutId="centerZoneTabPill"
+                          className="absolute inset-0 bg-gradient-to-b from-[#212732] to-[#14181F] rounded-lg border border-white/[0.16] shadow-[0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.12)] -z-10"
+                          transition={{ type: "spring", stiffness: 480, damping: 34 }}
+                        />
+                      )}
+                      <Globe className={`w-3.5 h-3.5 transition-colors ${activeTab === 'preview' ? 'text-cyanAccent drop-shadow-[0_0_6px_rgba(0,240,255,0.5)]' : 'text-textMuted'}`} />
+                      <span>Preview</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('code')}
-                      className={`px-2.5 rounded font-label-caps text-[10px] tracking-wider transition-all flex items-center gap-1.5 h-full ${activeTab === 'code' ? 'bg-surface-container-high text-primary font-bold shadow-md border border-outline-variant/25' : 'text-on-surface-variant/75 hover:text-primary'}`}
+                      className={`relative px-3 py-1 rounded-lg font-mono text-[11px] font-medium tracking-tight transition-all duration-200 flex items-center gap-1.5 h-full z-10 cursor-pointer select-none ${
+                        activeTab === 'code'
+                          ? 'text-white font-semibold'
+                          : 'text-textMuted hover:text-white/80'
+                      }`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-95"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>
-                      Code
+                      {activeTab === 'code' && (
+                        <motion.div
+                          layoutId="centerZoneTabPill"
+                          className="absolute inset-0 bg-gradient-to-b from-[#212732] to-[#14181F] rounded-lg border border-white/[0.16] shadow-[0_2px_8px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.12)] -z-10"
+                          transition={{ type: "spring", stiffness: 480, damping: 34 }}
+                        />
+                      )}
+                      <Code2 className={`w-3.5 h-3.5 transition-colors ${activeTab === 'code' ? 'text-cyanAccent drop-shadow-[0_0_6px_rgba(0,240,255,0.5)]' : 'text-textMuted'}`} />
+                      <span>Code</span>
                     </button>
                   </div>
                 )}
 
-                {/* Apple Share Button (Visual Premium detail) */}
-                <div
-                  className="w-7 h-7 flex items-center justify-center hover:bg-surface-container rounded-md text-on-surface-variant hover:text-primary transition-all cursor-pointer border border-transparent hover:border-outline-variant/20"
-                  title="Share Preview URL"
-                  onClick={() => {
-                    if (sandbox?.previewUrl) {
-                      navigator.clipboard.writeText(sandbox.previewUrl);
-                      alert('Copied sandbox preview URL to clipboard!');
-                    }
-                  }}
+                {/* External Open in New Tab Button */}
+                {sandbox?.previewUrl && (
+                  <motion.a
+                    href={sandbox.previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.06 }}
+                    whileTap={{ scale: 0.94 }}
+                    className="w-8 h-8 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] rounded-lg text-textSecondary hover:text-cyanAccent transition-all border border-white/[0.08] hover:border-cyanAccent/30 shadow-sm cursor-pointer"
+                    title="Open Preview in New Tab"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </motion.a>
+                )}
+
+                {/* Share / Copy URL Button */}
+                <motion.button
+                  whileHover={{ scale: 1.06 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={handleCopyUrl}
+                  className="w-8 h-8 flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] rounded-lg text-textSecondary hover:text-cyanAccent transition-all cursor-pointer border border-white/[0.08] hover:border-cyanAccent/30 shadow-sm"
+                  title="Copy Preview URL"
                 >
-                  <span className="material-symbols-outlined text-[14px]">ios_share</span>
-                </div>
+                  <Share2 className="w-3.5 h-3.5" />
+                </motion.button>
 
-
-
-                {/* Apple Revert Maximize button */}
+                {/* Close Button when maximized */}
                 {maximizedPanel === 'preview' && (
-                  <button
+                  <motion.button
                     onClick={() => setMaximizedPanel(null)}
-                    className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface hover:text-primary active:scale-90 cursor-pointer shadow-sm ml-1"
+                    whileHover={{ scale: 1.08, rotate: 90 }}
+                    whileTap={{ scale: 0.92 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.04] hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 border border-white/10 transition-colors text-textSecondary cursor-pointer ml-1"
                     title="Exit Fullscreen"
                   >
-                    <span className="material-symbols-outlined text-[15px]">close</span>
-                  </button>
+                    <X className="w-3.5 h-3.5" />
+                  </motion.button>
                 )}
               </div>
             </header>
-            <div className="flex-1 bg-black relative overflow-hidden flex items-center justify-center p-4">
+
+            {/* Main Stage Content */}
+            <div className="flex-1 bg-[#07080A] relative overflow-hidden flex items-center justify-center p-3">
               {maximizedPanel === 'preview' ? (
-                <div className="flex flex-col md:flex-row w-full h-full gap-4">
+                <div className="flex flex-col md:flex-row w-full h-full gap-3">
                   {/* Left Column: Live Preview Frame */}
-                  <div className="flex-1 h-full flex items-center justify-center relative bg-black min-w-0">
+                  <div className="flex-1 h-full flex items-center justify-center relative bg-black rounded-lg overflow-hidden min-w-0 border border-white/[0.07]">
                     <motion.div
                       animate={{
                         width: viewMode === 'mobile' ? mobileWidth : '100%',
-                        height: viewMode === 'mobile' ? '100%' : '100%',
+                        height: '100%',
                         maxHeight: viewMode === 'mobile' ? 850 : '100%',
-                        borderRadius: viewMode === 'mobile' ? 40 : 8
+                        borderRadius: viewMode === 'mobile' ? 36 : 4
                       }}
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full w-full h-full"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.55 }}
+                      className="relative overflow-hidden bg-[#0A0C0E] flex flex-col shadow-2xl max-h-full max-w-full w-full h-full"
                     >
-                      {/* Simulated Reload Overlay */}
+                      {/* Reload Overlay */}
                       <motion.div
                         initial={false}
                         animate={{ opacity: isReloading ? 1 : 0 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute inset-0 bg-black z-30 pointer-events-none"
+                        className="absolute inset-0 bg-[#08090A] z-30 pointer-events-none"
                       />
 
                       {sandbox?.previewUrl ? (
@@ -670,10 +911,10 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                           title="Preview"
                         />
                       ) : (
-                        <div className="absolute inset-0 flex items-center justify-center z-10 bg-surface-dim">
-                          <div className="flex flex-col items-center gap-4">
-                            <span className="material-symbols-outlined animate-spin text-[40px] text-primary">progress_activity</span>
-                            <span className="font-label-caps text-outline">Starting Sandbox Environment...</span>
+                        <div className="absolute inset-0 flex items-center justify-center z-10 bg-[#0A0C0E]">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-8 h-8 rounded-full border-2 border-cyanAccent/20 border-t-cyanAccent animate-spin"></div>
+                            <span className="font-mono text-xs text-textMuted">Starting Sandbox Environment...</span>
                           </div>
                         </div>
                       )}
@@ -681,32 +922,33 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                   </div>
 
                   {/* Right Column: Code Editor */}
-                  <div className="flex-1 h-full flex flex-col border border-outline-variant/20 rounded-lg overflow-hidden bg-[#1e1e1e] min-w-0">
+                  <div className="flex-1 h-full flex flex-col border border-white/[0.08] rounded-lg overflow-hidden bg-[#0A0C0E] min-w-0">
                     {/* Monaco Editor Header / Toolbar */}
-                    <div className="flex items-center justify-between px-3 h-9 bg-[#181818] border-b border-outline-variant/20 select-none">
+                    <div className="flex items-center justify-between px-3 h-8 bg-[#0D0F12] border-b border-white/[0.07] select-none">
                       <div className="flex items-center gap-2">
                         {/* Custom Dropdown for File Picker */}
                         <div className="relative" ref={dropdownRef}>
-                          <button
+                          <motion.button
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#202020] hover:bg-[#282828] border border-outline-variant/20 transition-all text-on-surface text-[11px] font-mono-data cursor-pointer select-none active:scale-95 shadow-sm"
+                            whileTap={{ scale: 0.96 }}
+                            className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#15181C] hover:bg-[#1A1F26] border border-white/10 hover:border-cyanAccent/30 transition-all text-white text-[11px] font-mono cursor-pointer select-none shadow-sm"
                           >
-                            <span className="flex items-center gap-2 font-medium lowercase">
+                            <span className="flex items-center gap-1.5 font-medium lowercase">
                               {getFileIcon(selectedFile)}
-                              <span className="truncate max-w-[150px] font-semibold">{selectedFile ? selectedFile.split(/[/\\]/).pop() : 'select file'}</span>
+                              <span className="truncate max-w-[150px] font-medium">{selectedFile ? selectedFile.split(/[/\\]/).pop() : 'select file'}</span>
                             </span>
-                            <span className="material-symbols-outlined text-[13px] text-outline">unfold_more</span>
-                          </button>
+                            <ChevronDown className="w-3 h-3 text-textMuted" />
+                          </motion.button>
 
                           {/* Dropdown Menu Overlay */}
                           <AnimatePresence>
                             {isDropdownOpen && (
                               <motion.div
-                                initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                                initial={{ opacity: 0, y: -4, scale: 0.96 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                                transition={{ duration: 0.15, ease: "easeOut" }}
-                                className="absolute left-0 mt-1.5 w-64 max-h-72 overflow-y-auto bg-[#181818]/95 border border-outline-variant/35 rounded-md shadow-2xl z-40 py-1 backdrop-blur-lg scrollbar-thin select-none"
+                                exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                                className="absolute left-0 mt-1.5 w-64 max-h-72 overflow-y-auto bg-[#0D0F12]/95 border border-white/15 rounded-lg shadow-2xl z-40 py-1 backdrop-blur-xl select-none"
                               >
                                 {(() => {
                                   const groups = {};
@@ -739,8 +981,8 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
                                     return (
                                       <div key={folderName} className="flex flex-col">
-                                        <div className="px-3 py-1 text-[8.5px] font-bold font-mono text-outline/40 uppercase tracking-widest bg-surface-container-high/15 flex items-center gap-1.5 select-none border-y border-outline-variant/10 first:border-t-0">
-                                          <FolderOpen className="w-2.5 h-2.5 text-primary/75 shrink-0" />
+                                        <div className="px-3 py-1 text-[8.5px] font-bold font-mono text-textMuted uppercase tracking-widest bg-white/[0.02] flex items-center gap-1.5 select-none border-y border-white/[0.04] first:border-t-0">
+                                          <FolderOpen className="w-2.5 h-2.5 text-cyanAccent/70 shrink-0" />
                                           <span>{folderName === 'root' ? 'root' : folderName}</span>
                                         </div>
                                         <div className="flex flex-col">
@@ -753,17 +995,18 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                                                   if (onSelectFile) onSelectFile(file.fullPath);
                                                   setIsDropdownOpen(false);
                                                 }}
-                                                className={`flex items-center gap-2 px-4 py-1.5 text-[11px] font-mono-data cursor-pointer transition-all lowercase select-none ${isSelected
-                                                  ? 'bg-primary/10 text-primary font-semibold border-l-2 border-primary pl-3.5'
-                                                  : 'text-on-surface-variant hover:text-on-surface hover:bg-[#252525]'
-                                                  }`}
+                                                className={`flex items-center gap-2 px-3.5 py-1.5 text-[11px] font-mono cursor-pointer transition-colors lowercase select-none ${
+                                                  isSelected
+                                                    ? 'bg-cyanAccent/10 text-cyanAccent font-medium border-l-2 border-cyanAccent pl-3'
+                                                    : 'text-textSecondary hover:text-white hover:bg-white/[0.04]'
+                                                }`}
                                               >
                                                 <div className="flex-shrink-0 flex items-center justify-center">
                                                   {getFileIcon(file.name)}
                                                 </div>
                                                 <span className="truncate flex-1 text-left">{file.name}</span>
                                                 {isSelected && (
-                                                  <span className="material-symbols-outlined text-[12px] text-primary">check</span>
+                                                  <Check className="w-3 h-3 text-cyanAccent" />
                                                 )}
                                               </div>
                                             );
@@ -780,7 +1023,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                       </div>
                       <div className="flex items-center gap-2">
                         {selectedFile && (
-                          <span className="font-mono-data text-[9px] text-outline/50 uppercase tracking-widest">
+                          <span className="font-mono text-[9px] text-textMuted uppercase tracking-widest">
                             {selectedFile.split('.').pop() || 'text'}
                           </span>
                         )}
@@ -788,11 +1031,11 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                     </div>
 
                     {/* Monaco Editor Content */}
-                    <div className="flex-1 min-h-0 relative bg-[#1e1e1e]">
+                    <div className="flex-1 min-h-0 relative bg-[#0A0C0E]">
                       {isLoadingFile ? (
-                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline">
-                          <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
-                          <span className="font-label-caps text-[12px]">Loading file content...</span>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#0A0C0E] gap-3 text-textMuted h-full">
+                          <div className="w-7 h-7 rounded-full border-2 border-cyanAccent/20 border-t-cyanAccent animate-spin"></div>
+                          <span className="font-mono text-[11px]">Loading file content...</span>
                         </div>
                       ) : selectedFile ? (
                         <div className="flex-1 w-full h-full relative overflow-hidden">
@@ -810,7 +1053,7 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                             onMount={handleEditorDidMount}
                             options={{
                               readOnly: false,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontFamily: '"JetBrains Mono", monospace',
                               scrollbar: {
                                 vertical: 'hidden',
@@ -829,40 +1072,40 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                           />
                         </div>
                       ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline/50">
-                          <span className="material-symbols-outlined text-[40px]">description</span>
-                          <span className="font-label-caps text-[12px]">Select a file from the explorer to view code</span>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#0A0C0E] gap-3 text-textMuted/60 h-full">
+                          <FileText className="w-8 h-8 stroke-1 text-textMuted" />
+                          <span className="font-mono text-[11px]">Select a file from the explorer to view code</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Preview Terminal (Below code showing area in 30% height) */}
+                    {/* Preview Terminal Drawer */}
                     <AnimatePresence>
                       {showPreviewTerminal && (
                         <motion.div
                           key="preview-terminal-panel"
                           initial={{ height: 0 }}
-                          animate={{ height: '30%' }}
+                          animate={{ height: '32%' }}
                           exit={{ height: 0 }}
-                          transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-                          className="border-t border-outline-variant/20 bg-[#141414] flex flex-col overflow-hidden relative"
+                          transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+                          className="border-t border-white/[0.08] bg-[#08090A] flex flex-col overflow-hidden relative"
                         >
-                          <div className="flex items-center justify-between px-3 h-8 bg-[#181818] border-b border-[#252525] select-none">
-                            <span className="font-mono-data text-[10px] text-outline/80 font-bold uppercase tracking-widest flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                          <div className="flex items-center justify-between px-3 h-7 bg-[#0B0D10] border-b border-white/[0.06] select-none">
+                            <span className="font-mono text-[10px] text-textMuted font-medium uppercase tracking-widest flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyanAccent animate-pulse"></span>
                               Terminal
                             </span>
                             <button
                               onClick={() => setShowPreviewTerminal(false)}
-                              className="text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer flex items-center"
+                              className="text-textMuted hover:text-white transition-colors cursor-pointer flex items-center"
                             >
-                              <span className="material-symbols-outlined text-[13px]">close</span>
+                              <X className="w-3 h-3" />
                             </button>
                           </div>
                           <div className="flex-1 min-h-0 relative bg-transparent p-2">
                             <div ref={previewTerminalRef} className="absolute inset-2 overflow-hidden" />
                             {!sandbox && (
-                              <div className="absolute inset-0 flex items-center justify-center text-outline font-code-sm bg-black/60 backdrop-blur-sm z-30">
+                              <div className="absolute inset-0 flex items-center justify-center text-textMuted font-mono text-xs bg-black/60 backdrop-blur-sm z-30">
                                 Connecting to terminal...
                               </div>
                             )}
@@ -876,20 +1119,20 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                 <motion.div
                   animate={{
                     width: viewMode === 'mobile' ? 'auto' : '100%',
-                    height: viewMode === 'mobile' ? '100%' : '100%',
+                    height: '100%',
                     maxHeight: viewMode === 'mobile' ? 850 : '100%',
                     aspectRatio: viewMode === 'mobile' ? '696/850' : 'auto',
-                    borderRadius: viewMode === 'mobile' ? 40 : 8
+                    borderRadius: viewMode === 'mobile' ? 36 : 6
                   }}
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  className="border border-outline-variant/20 relative overflow-hidden bg-surface-dim flex flex-col shadow-2xl group max-h-full max-w-full"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.55 }}
+                  className="border border-white/[0.08] relative overflow-hidden bg-[#0A0C0E] flex flex-col shadow-2xl max-h-full max-w-full"
                 >
-                  {/* Simulated Reload Overlay */}
+                  {/* Reload Overlay */}
                   <motion.div
                     initial={false}
                     animate={{ opacity: isReloading ? 1 : 0 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute inset-0 bg-black z-30 pointer-events-none"
+                    className="absolute inset-0 bg-[#08090A] z-30 pointer-events-none"
                   />
 
                   {activeTab === 'preview' ? (
@@ -901,19 +1144,19 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                         title="Preview"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-surface-dim">
-                        <div className="flex flex-col items-center gap-4">
-                          <span className="material-symbols-outlined animate-spin text-[40px] text-primary">progress_activity</span>
-                          <span className="font-label-caps text-outline">Starting Sandbox Environment...</span>
+                      <div className="absolute inset-0 flex items-center justify-center z-10 bg-[#0A0C0E]">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-8 h-8 rounded-full border-2 border-cyanAccent/20 border-t-cyanAccent animate-spin"></div>
+                          <span className="font-mono text-xs text-textMuted">Starting Sandbox Environment...</span>
                         </div>
                       </div>
                     )
                   ) : (
-                    <div className="absolute inset-0 w-full h-full z-10 bg-[#1e1e1e] flex flex-col">
+                    <div className="absolute inset-0 w-full h-full z-10 bg-[#0A0C0E] flex flex-col">
                       {isLoadingFile ? (
-                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline">
-                          <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
-                          <span className="font-label-caps text-[12px]">Loading file content...</span>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#0A0C0E] gap-3 text-textMuted">
+                          <div className="w-7 h-7 rounded-full border-2 border-cyanAccent/20 border-t-cyanAccent animate-spin"></div>
+                          <span className="font-mono text-xs">Loading file content...</span>
                         </div>
                       ) : selectedFile ? (
                         <div className="flex-1 w-full h-full relative overflow-hidden">
@@ -948,9 +1191,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
                           />
                         </div>
                       ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center bg-[#1e1e1e] gap-3 text-outline/50">
-                          <span className="material-symbols-outlined text-[40px]">description</span>
-                          <span className="font-label-caps text-[12px]">Select a file from the explorer to view code</span>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#0A0C0E] gap-3 text-textMuted/60">
+                          <FileText className="w-8 h-8 stroke-1 text-textMuted" />
+                          <span className="font-mono text-xs">Select a file from the explorer to view code</span>
                         </div>
                       )}
                     </div>
@@ -963,93 +1206,167 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
 
         <VerticalResizeHandle />
 
+        {/* BOTTOM PANEL: LUXURY PRODUCTION TERMINAL */}
         <Panel defaultSize={40} minSize={20}>
           <motion.div
             layout
-            transition={{ type: "spring", stiffness: 320, damping: 24 }}
-            className={`w-full h-full bg-surface-container-lowest border border-outline-variant/35 rounded-xl flex flex-col overflow-hidden shadow-[0_15px_40px_rgba(0,0,0,0.6)] ${maximizedPanel === 'terminal'
-              ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-surface-container-lowest rounded-none'
-              : 'relative'
-              }`}
+            transition={{ type: "spring", stiffness: 340, damping: 28 }}
+            className={`w-full h-full bg-[#07090E] border border-white/[0.08] rounded-xl flex flex-col overflow-hidden shadow-[0_16px_45px_rgba(0,0,0,0.7)] ${
+              maximizedPanel === 'terminal'
+                ? 'fixed inset-0 w-screen h-screen z-50 shadow-2xl border-none bg-[#07090E] rounded-none'
+                : 'relative'
+            }`}
           >
-            <header className="flex items-center px-4 py-2 bg-surface-container-lowest border-b border-outline-variant/35 z-10 justify-between select-none relative h-10">
-              {/* Left: macOS Window traffic light controls */}
-              <div className="flex items-center gap-1.5 z-20">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" title="Close" />
-                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] opacity-80 hover:opacity-100 transition-opacity cursor-pointer shadow-sm" title="Minimize" />
-                <div
-                  className="w-2.5 h-2.5 rounded-full bg-[#27c93f] opacity-85 shadow-sm"
-                />
-              </div>
+            {/* Terminal Window Header */}
+            <header className="relative flex items-center px-3.5 py-1.5 bg-gradient-to-r from-[#0C0F17]/95 via-[#080B11]/95 to-[#0C0F17]/95 border-b border-white/[0.08] backdrop-blur-xl z-20 justify-between select-none h-11">
+              {/* Ambient top specular hairline */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyanAccent/30 to-transparent pointer-events-none" />
 
-              {/* Center: Centered Session name (bash terminal style) */}
-              <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none">
-                <div className="flex items-center gap-2 text-on-surface-variant/75 text-[11px] font-mono-data tracking-wide select-none">
-                  <span>bash</span>
-                  <span className="opacity-45">—</span>
-                  <span className="text-on-surface/80">root@sandbox-pod-{sandbox?.sandboxId ? sandbox.sandboxId.slice(0, 8) : 'pod'}:/workspace</span>
-                  {/* Status Beacon */}
-                  <div className="relative flex items-center justify-center ml-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary absolute animate-ping opacity-75"></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(255,255,255,0.8)]"></span>
-                  </div>
+              {/* Left: Authentic macOS Window Traffic Lights */}
+              <div className="flex items-center gap-2.5 z-20 shrink-0">
+                <div className="flex items-center gap-1.5 pr-1">
+                  <motion.button
+                    whileHover={{ scale: 1.25 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] border border-[#E0443E]/80 shadow-[0_0_8px_rgba(255,95,86,0.4)] cursor-pointer focus:outline-none transition-transform"
+                    title="Clear console"
+                    onClick={handleClearTerminal}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.25 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] border border-[#DEA123]/80 shadow-[0_0_8px_rgba(255,189,46,0.4)] cursor-pointer focus:outline-none transition-transform"
+                    title="Minimize"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.25 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setMaximizedPanel(maximizedPanel === 'terminal' ? null : 'terminal')}
+                    className="w-2.5 h-2.5 rounded-full bg-[#27C93F] border border-[#1AAB29]/80 shadow-[0_0_8px_rgba(39,201,63,0.4)] cursor-pointer focus:outline-none transition-transform"
+                    title={maximizedPanel === 'terminal' ? "Restore Window" : "Full Screen Terminal"}
+                  />
                 </div>
+
+                <div className="h-4 w-px bg-white/10 hidden sm:block" />
               </div>
 
-              {/* Right: macOS Utilities (Clear & Reconnect) */}
-              <div className="flex items-center gap-1.5 z-20">
-                {/* Clear Terminal Display */}
-                <button
+              {/* Center: High-Precision Interactive Terminal Session Capsule */}
+              <div className="flex-1 max-w-[460px] min-w-[180px] mx-2 flex items-center justify-center pointer-events-auto z-20">
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
                   onClick={() => {
-                    if (xtermRef.current) {
-                      xtermRef.current.clear();
-                      xtermRef.current.write('\r\x1b[32m[Console cleared by user]\x1b[0m\r\n');
-                      if (sandbox) {
-                        xtermRef.current.write(`root@sandbox-pod-${sandbox.sandboxId}:/workspace# `);
-                      } else {
-                        xtermRef.current.write(`root@sandbox-pod-sandbox:/workspace# `);
-                      }
+                    if (sandbox?.sandboxId) {
+                      navigator.clipboard?.writeText(`root@sandbox-pod-${sandbox.sandboxId}:/workspace`);
+                      dispatch(
+                        addToast({
+                          type: 'info',
+                          title: 'SESSION PATH COPIED',
+                          message: `root@sandbox-pod-${sandbox.sandboxId}:/workspace`,
+                          duration: 2500,
+                        })
+                      );
                     }
                   }}
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface-variant hover:text-primary text-[10px] font-semibold font-label-caps cursor-pointer active:scale-95 shadow-sm"
-                  title="Clear Terminal Display"
+                  className="flex items-center gap-2 px-3 py-1 rounded-xl bg-[#080A0F]/90 hover:bg-[#0D1016] border border-white/[0.08] hover:border-cyanAccent/40 transition-all duration-200 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)] cursor-pointer group/pod"
+                  title="Click to copy pod workspace path"
                 >
-                  <span className="material-symbols-outlined text-[12px]">delete_sweep</span>
+                  {/* Terminal Glyph */}
+                  <div className="w-4 h-4 rounded-md bg-cyanAccent/10 border border-cyanAccent/25 flex items-center justify-center text-cyanAccent shrink-0">
+                    <TerminalIcon className="w-2.5 h-2.5 stroke-[2.5]" />
+                  </div>
+
+                  {/* Shell Badge */}
+                  <span className="font-mono text-[10.5px] font-bold text-white tracking-wide">bash</span>
+                  <span className="text-white/20 text-xs">·</span>
+
+                  {/* Pod Path Host */}
+                  <span className="font-mono text-[10.5px] text-gray-400 group-hover/pod:text-cyanAccent transition-colors truncate max-w-[180px] sm:max-w-[280px]">
+                    root@sandbox-pod-{sandbox?.sandboxId ? sandbox.sandboxId.slice(0, 8) : 'pod'}:/workspace
+                  </span>
+
+                  {/* Live Status Beacon */}
+                  <div className="relative flex items-center justify-center shrink-0 ml-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyanAccent absolute animate-ping opacity-75"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyanAccent shadow-[0_0_8px_#00f0ff]"></span>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Right Utilities */}
+              <div className="flex items-center gap-1.5 z-20 shrink-0">
+                {/* Clear Terminal Display */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={handleClearTerminal}
+                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-rose-500/10 border border-white/[0.08] hover:border-rose-500/35 transition-all text-gray-400 hover:text-rose-400 text-[10.5px] font-medium font-mono cursor-pointer shadow-sm select-none"
+                  title="Clear Console Output"
+                >
+                  <Trash2 className="w-3 h-3 text-gray-500 group-hover:text-rose-400 transition-colors" />
                   <span>Clear</span>
-                </button>
+                </motion.button>
 
                 {/* Terminal Reconnect Button */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
                   onClick={handleReconnectTerminal}
                   disabled={isTerminalReloading}
-                  className="flex items-center gap-1 px-2 py-1 rounded bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface-variant hover:text-primary text-[10px] font-semibold font-label-caps cursor-pointer active:scale-95 shadow-sm disabled:opacity-40"
-                  title="Reconnect Terminal Socket"
+                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-cyanAccent/10 border border-white/[0.08] hover:border-cyanAccent/35 transition-all text-gray-400 hover:text-cyanAccent text-[10.5px] font-medium font-mono cursor-pointer shadow-sm select-none disabled:opacity-40"
+                  title="Reconnect Terminal WebSocket"
                 >
-                  <span className={`material-symbols-outlined text-[12px] ${isTerminalReloading ? 'animate-spin' : 'hover:rotate-180 transition-all duration-300'}`}>autorenew</span>
+                  <RefreshCw className={`w-3 h-3 ${isTerminalReloading ? 'animate-spin text-cyanAccent' : 'text-gray-500 group-hover:text-cyanAccent transition-colors'}`} />
                   <span>Reconnect</span>
-                </button>
+                </motion.button>
 
-                {/* Close Button when maximized */}
-                {maximizedPanel === 'terminal' && (
-                  <button
-                    onClick={() => setMaximizedPanel(null)}
-                    className="w-7 h-7 flex items-center justify-center rounded-full bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 transition-all text-on-surface hover:text-primary active:scale-90 cursor-pointer shadow-sm ml-1"
-                    title="Exit Fullscreen"
-                  >
-                    <span className="material-symbols-outlined text-[15px]">close</span>
-                  </button>
-                )}
+                {/* Fullscreen / Maximize Terminal Button */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => setMaximizedPanel(maximizedPanel === 'terminal' ? null : 'terminal')}
+                  className={`p-1.5 rounded-lg border text-[10px] font-mono cursor-pointer transition-all select-none shadow-sm ${
+                    maximizedPanel === 'terminal'
+                      ? 'bg-cyanAccent/15 border-cyanAccent/40 text-cyanAccent'
+                      : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-gray-400 hover:text-white'
+                  }`}
+                  title={maximizedPanel === 'terminal' ? "Restore Window" : "Maximize Terminal"}
+                >
+                  {maximizedPanel === 'terminal' ? (
+                    <Minimize2 className="w-3 h-3" />
+                  ) : (
+                    <Maximize2 className="w-3 h-3" />
+                  )}
+                </motion.button>
               </div>
             </header>
 
-            {/* The xterm container with original scanlines CRT styling */}
-            <div className="flex-1 min-h-0 relative z-10 bg-transparent scanlines">
-              <div ref={terminalRef} className="absolute inset-3 overflow-hidden" />
+            {/* The xterm container with sleek technical dark styling */}
+            <div className="flex-1 min-h-0 relative z-10 bg-[#05070B] shadow-[inset_0_2px_14px_rgba(0,0,0,0.85)]">
+              <div ref={terminalRef} className="absolute inset-3 overflow-hidden font-mono" />
               {!sandbox && (
-                <div className="absolute inset-0 flex items-center justify-center text-outline font-code-sm bg-black/60 backdrop-blur-sm z-30">
+                <div className="absolute inset-0 flex items-center justify-center text-textMuted font-mono text-xs bg-black/60 backdrop-blur-sm z-30">
                   Connecting to terminal...
                 </div>
               )}
+            </div>
+
+            {/* Terminal Micro Footer Telemetry */}
+            <div className="px-3.5 py-1 bg-[#040609] border-t border-white/[0.05] flex items-center justify-between text-[9px] font-mono text-gray-500 select-none">
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-emerald-400/90 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                  ONLINE
+                </span>
+                <span className="text-white/10">|</span>
+                <span className="text-gray-400">TTY 1</span>
+                <span className="text-white/10">|</span>
+                <span>UTF-8</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>SANDBOX POD</span>
+                <span className="text-white/10">|</span>
+                <span className="text-cyanAccent/90 font-medium">WS LIVE</span>
+              </div>
             </div>
           </motion.div>
         </Panel>
@@ -1062,9 +1379,9 @@ export default function CenterZone({ sandbox, socketRef, terminalVersion, reconn
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             onClick={() => setMaximizedPanel(null)}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md cursor-pointer"
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-md cursor-pointer"
           />
         )}
       </AnimatePresence>
